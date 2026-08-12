@@ -65,7 +65,8 @@ button{font-family:inherit;cursor:pointer}
 .topbar{position:sticky;top:0;z-index:40;background:rgba(253,251,247,.55);
   backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);
   border-bottom:1px solid var(--line)}
-.topbar .inner{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 22px}
+.topbar .inner{max-width:1600px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 32px}
+@media(min-width:1800px){.topbar .inner{max-width:100%;padding:12px 3vw}}
 .brand{display:flex;align-items:center;gap:12px;min-width:0}
 .logo{width:42px;height:42px;border-radius:13px;flex:none;display:flex;align-items:center;justify-content:center;
   background:linear-gradient(140deg,var(--amber),var(--amber-deep));color:#fff;box-shadow:0 6px 16px rgba(212,140,59,.35)}
@@ -451,7 +452,8 @@ th{background:rgba(255,255,255,.9);color:var(--ink-2);font-weight:600;position:s
 @media (max-width:920px){ .ov-kpis{grid-template-columns:repeat(2,1fr)} .ov-grid,.ov-grid2{grid-template-columns:1fr} .sidebar{display:none} }
 
 /* ===================== 概览空间重构：等高撑满 + 图表填充 + 快捷操作 ===================== */
-.app{ max-width:1320px; padding:24px; }
+.app{ max-width:1600px; padding:24px 32px; }
+@media(min-width:1800px){ .app{ max-width:100%; padding:24px 3vw; } }
 /* 概览卡片统一为弹性列，让内部图表撑满剩余高度，消除卡片内死白 */
 .ov-grid .glass, .ov-grid2 .glass{ display:flex; flex-direction:column; }
 .ov-grid .chart-wrap{ flex:1; min-height:220px; }
@@ -469,6 +471,8 @@ th{background:rgba(255,255,255,.9);color:var(--ink-2);font-weight:600;position:s
 .act b{ display:block; font-size:14px; font-weight:700; line-height:1.3 }
 .act span{ font-size:12px; color:var(--muted) }
 @media (max-width:920px){ .ov-actions{ grid-template-columns:repeat(2,1fr) } }
+/* 宽屏下把录入区纵向也拉大，避免面板又宽又扁 */
+@media(min-width:1400px){ textarea{ min-height:168px } .preview{ max-height:320px } }
 </style>
 </head>
 <body>
