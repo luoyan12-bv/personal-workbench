@@ -1,7 +1,15 @@
 <!DOCTYPE html>
 <!-- 个人工作台 · 琥珀与极光 × 液态玻璃
      单文件 HTML + 内联 CSS + 原生 JS，纯离线可用（无需联网加载任何库）。
-     结构：① <style>
+     结构：① style 内联样式 ② body 各模块(section.module) ③ script 逻辑。
+     数据统一存在 WS 对象里，自动保存到浏览器 localStorage(键名 wb_aurora_v1)。
+     想加新功能：复制一个 <section class="module" id="mod-xxx"> 并写对应切换/逻辑即可。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>个人工作台 · 琥珀与极光</title>
+<style>
 :root{
   --bg:#FBF7F1;
   --bg-2:#F3ECE2;
