@@ -715,6 +715,7 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
             <div class="ctx-mini"><b id="ctxNet">¥0</b><span id="ctxNetTrend">—</span></div>
             <div class="ctx-sub">较上月 <span id="ctxNetDelta">—</span></div>
             <div class="ctx-sub" style="margin-top:8px;display:flex;align-items:center;gap:6px"><span id="ctxDataDot" class="sb-dot" style="background:var(--faint)"></span><span id="ctxDataSource">演示数据</span></div>
+            <div class="ctx-sub" id="ctxFallback" style="margin-top:6px;color:var(--amber-deep);font-weight:600;display:none"></div>
           </div>
           <div class="glass ctx-card reveal" data-d="440">
             <div class="card-title"><h3>多端设备</h3></div>
@@ -1685,15 +1686,34 @@ async function fetchLedgerData(){
   }
 }
 
+function labelMonth(ym){
+  const [y,m]=ym.split('-').map(Number);
+  const thisY=new Date().getFullYear();
+  return y===thisY?`${m}月`:`${y}年${m}月`;
+}
+function prevMonthStr(ym){
+  const [y,m]=ym.split('-').map(Number);
+  if(m===1) return `${y-1}-12`;
+  return `${y}-${String(m-1).padStart(2,'0')}`;
+}
 function processLedgerRows(rows){
   const records=rows.filter(r=>r.id!=='__budget__' && r.amount!=null).map(r=>({...r,amount:Number(r.amount)||0,status:Number(r.status)||0}));
   const budgetRow=rows.find(r=>r.id==='__budget__');
   const now=new Date();
   const cur=monthStr(now);
-  const lastD=new Date(now.getFullYear(),now.getMonth()-1,1);
-  const last=monthStr(lastD);
 
-  const monthRecs=records.filter(r=>r.date && r.date.startsWith(cur));
+  // 如果当月没有记录，自动回退到最新有数据的月份，避免月初/未同步时全屏 0
+  let effectiveCur=cur;
+  let fallbackNote='';
+  const curRecsCheck=records.filter(r=>r.date && r.date.startsWith(cur));
+  if(curRecsCheck.length===0 && records.length>0){
+    const latest=records.filter(r=>r.date).sort((a,b)=>b.date.localeCompare(a.date))[0];
+    if(latest){ effectiveCur=latest.date.slice(0,7); fallbackNote=`本月暂无记录，已切换至 ${labelMonth(effectiveCur)} 数据`; }
+  }
+  const last=prevMonthStr(effectiveCur);
+  const mLabel=labelMonth(effectiveCur);
+
+  const monthRecs=records.filter(r=>r.date && r.date.startsWith(effectiveCur));
   const monthTotal=monthRecs.reduce((s,r)=>s+r.amount,0);
   const monthDone=monthRecs.filter(r=>r.status===1).reduce((s,r)=>s+r.amount,0);
   const monthPending=monthRecs.filter(r=>r.status!==1).reduce((s,r)=>s+r.amount,0);
@@ -1717,21 +1737,23 @@ function processLedgerRows(rows){
 
   const budgetTotal=budgetRow?Number(budgetRow.amount||0):0;
 
-  const flow=monthRecs.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.created_at||'').localeCompare(a.created_at||'')).slice(0,5).map(r=>{
+  const flow=monthRecs.sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.createtime||'').localeCompare(a.createtime||'')).slice(0,5).map(r=>{
     const m=EXPENSE_TYPE_META[r.type]||EXPENSE_TYPE_META.other;
     return {c:m.name,t:r.remark||m.name,a:-r.amount,ic:m.color};
   });
 
+  OV.monthLabel=mLabel;
+  OV.fallbackNote=fallbackNote;
   OV.kpis=[
-    {meta:"本月支出",to:monthTotal,pre:"¥",dec:2,trend:totalRate>=0?"up":"down",trendTxt:`较上月 ${totalRate>=0?'+':''}${totalRate.toFixed(1)}%`,bg:"linear-gradient(140deg,var(--amber),var(--amber-deep))",ic:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
-    {meta:"本月已报销",to:monthDone,pre:"¥",dec:2,trend:"up",trendTxt:`占 ${doneRate.toFixed(1)}%`,bg:"linear-gradient(140deg,#3FB98A,#2a8f68)",ic:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
-    {meta:"本月待报销",to:monthPending,pre:"¥",dec:2,trend:monthPending>0?"up":"down",trendTxt:`${monthRecs.filter(r=>r.status!==1).length} 笔待处理`,bg:"linear-gradient(140deg,var(--violet),#7d5bd0)",ic:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="2.4"/><path d="M12 7v5l3 3" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+    {meta:`${mLabel}支出`,to:monthTotal,pre:"¥",dec:2,trend:totalRate>=0?"up":"down",trendTxt:`较上月 ${totalRate>=0?'+':''}${totalRate.toFixed(1)}%`,bg:"linear-gradient(140deg,var(--amber),var(--amber-deep))",ic:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12l7 7 7-7" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+    {meta:`${mLabel}已报销`,to:monthDone,pre:"¥",dec:2,trend:"up",trendTxt:`占 ${doneRate.toFixed(1)}%`,bg:"linear-gradient(140deg,#3FB98A,#2a8f68)",ic:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+    {meta:`${mLabel}待报销`,to:monthPending,pre:"¥",dec:2,trend:monthPending>0?"up":"down",trendTxt:`${monthRecs.filter(r=>r.status!==1).length} 笔待处理`,bg:"linear-gradient(140deg,var(--violet),#7d5bd0)",ic:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="2.4"/><path d="M12 7v5l3 3" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
     {meta:"记账笔数",to:monthCount,pre:"",dec:0,trend:countRate>=0?"up":"down",trendTxt:`较上月 ${countRate>=0?'+':''}${countRate.toFixed(1)}%`,bg:"linear-gradient(140deg,var(--aurora),#3f6fd6)",ic:'<svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M9 11h6M9 15h6M7 3h10l4 4v14H7V3z" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'}
   ];
   OV.area=area;
   OV.donut=donut.length?donut:[{n:"暂无数据",v:1,c:"#6b7280"}];
   OV.budget={total:budgetTotal||12000,used:monthTotal};
-  OV.flow=flow.length?flow:[{c:"提示",t:"本月暂无记账记录",a:0,ic:"#6b7280"}];
+  OV.flow=flow.length?flow:[{c:"提示",t:`${mLabel}暂无记账记录`,a:0,ic:"#6b7280"}];
 }
 function fmtMoney(v,dec){ return Number(v).toLocaleString('zh-CN',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
 function countUp(el){
@@ -1810,9 +1832,11 @@ function renderContext(){
   const trEl=document.getElementById("ctxNetTrend"); if(trEl) trEl.textContent=(spent.trend==="up"?"▲":"▼")+" "+spent.trendTxt;
   const dEl=document.getElementById("ctxNetDelta"); if(dEl) dEl.textContent=spent.trendTxt;
   const srcEl=document.getElementById("ctxDataSource");
-  if(srcEl) srcEl.textContent=WS.ledgerLoaded?"已同步记账本":"演示数据 · 连接失败";
+  if(srcEl) srcEl.textContent=WS.ledgerLoaded?`已同步记账本 · ${OV.monthLabel||'本月'}`:"演示数据 · 连接失败";
   const srcDot=document.getElementById("ctxDataDot");
   if(srcDot) srcDot.style.background=WS.ledgerLoaded?"var(--ok)":"var(--faint)";
+  const fbEl=document.getElementById("ctxFallback");
+  if(fbEl){ fbEl.style.display=OV.fallbackNote?'block':'none'; fbEl.textContent=OV.fallbackNote||''; }
 }
 
 /* 同步状态：顶栏芯片 + 情境面板 + 底部状态条 三处联动 */
