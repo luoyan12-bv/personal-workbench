@@ -561,6 +561,56 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 @media (max-width:760px){ .statusbar .sb-hide{ display:none } }
 /* 给主区留出状态条空间，避免被遮挡 */
 .app{ padding-bottom:58px }
+
+/* ===================== 手机端适配：侧栏→底部 Tab 栏，顶栏收拢 ===================== */
+@media (max-width:920px){
+  /* 顶栏收拢：品牌 + 同步 + 主题 + 头像 */
+  .topbar .inner{ padding:10px 14px; gap:10px }
+  .topbar .brand .sub{ display:none }
+  .topbar .brand h1{ font-size:16px }
+  .search{ display:none }
+  .top-actions{ gap:8px; margin-left:auto }
+  .ghostbtn, .bellBtn{ display:none }
+
+  /* 主区单列 + 底部给 Tab 栏留位 */
+  .app{ display:flex; flex-direction:column; max-width:100% !important; padding:14px 14px 88px !important; gap:14px }
+
+  /* 左侧导航 → 固定底部 Tab 栏（复用 nav-item[data-mod]，模块切换逻辑不变） */
+  .sidebar{
+    display:flex !important;
+    position:fixed; left:0; right:0; bottom:0; top:auto; width:auto;
+    flex-direction:row; gap:0;
+    padding:7px 6px calc(7px + env(safe-area-inset-bottom));
+    background:var(--glass); backdrop-filter:blur(22px) saturate(150%); -webkit-backdrop-filter:blur(22px) saturate(150%);
+    border:1px solid var(--glass-border); border-radius:0;
+    box-shadow:0 -10px 30px rgba(28,28,30,.12); z-index:60;
+  }
+  [data-theme="dark"] .sidebar{ background:rgba(18,20,26,.82); border-top-color:var(--glass-border) }
+  .sidebar .nav-title, .sidebar .nav-ind, .sidebar .side-foot{ display:none }
+  .sidebar .nav-item{
+    flex:1; flex-direction:column; gap:4px; padding:7px 4px;
+    font-size:11px; font-weight:600; border:none; background:transparent;
+    color:var(--muted); border-radius:12px; justify-content:center; text-align:center;
+  }
+  .sidebar .nav-item .ic{ width:26px; height:26px; border-radius:9px; background:rgba(255,255,255,.5) }
+  .sidebar .nav-item.on{ background:transparent; color:var(--amber) }
+  .sidebar .nav-item.on .ic{ background:linear-gradient(140deg,var(--amber),var(--amber-deep)); color:#fff }
+  .sidebar .nav-item.on::before{ display:none }
+  .sidebar .nav-item.add{ border:1px solid transparent; color:var(--muted); background:transparent }
+  .sidebar .nav-item:hover{ background:transparent }
+
+  /* 底部状态条与 Tab 栏冲突，手机隐藏 */
+  .statusbar{ display:none }
+
+  /* 标题略缩 */
+  .page-head h2{ font-size:22px }
+}
+@media (max-width:440px){
+  .ov-kpis{ grid-template-columns:1fr }
+  .ov-actions{ grid-template-columns:1fr }
+  .kpi .value{ font-size:28px }
+  .topbar .ghostbtn{ display:none }
+}
 </style>
 </head>
 <body>
