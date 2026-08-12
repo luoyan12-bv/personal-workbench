@@ -487,6 +487,56 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 @media (max-width:920px){ .ov-actions{ grid-template-columns:repeat(2,1fr) } }
 /* 宽屏下把录入区纵向也拉大，避免面板又宽又扁 */
 @media(min-width:1400px){ textarea{ min-height:168px } .preview{ max-height:320px } }
+
+/* ===== 概览非对称布局：主区 2fr + 情境面板 1fr（全方位设计） ===== */
+.ov-layout{ display:grid; grid-template-columns:minmax(0,1fr) 332px; gap:22px; align-items:start; margin-top:2px }
+.ov-main{ min-width:0; display:flex; flex-direction:column; gap:18px }
+.ov-side{ position:sticky; top:90px; display:flex; flex-direction:column; gap:16px }
+.ctx-card{ padding:16px 18px }
+.ctx-card .card-title{ margin-bottom:10px }
+.ctx-pulse{ display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--ok) }
+.ctx-pulse i{ width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(43,182,115,.5);animation:cpulse 1.8s ease-out infinite }
+.ctx-pulse.off{ color:var(--muted) }
+.ctx-pulse.off i{ background:var(--muted); animation:none; box-shadow:none }
+@keyframes cpulse{0%{box-shadow:0 0 0 0 rgba(43,182,115,.5)}100%{box-shadow:0 0 0 10px rgba(43,182,115,0)}}
+.ctx-sub{ font-size:12px; color:var(--muted); margin-top:6px; line-height:1.5 }
+.ctx-mini{ display:flex; align-items:baseline; gap:8px; margin-top:6px }
+.ctx-mini b{ font-size:23px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.5px }
+.ctx-mini span{ font-size:12px; color:var(--muted) }
+.dev{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line) }
+.dev:last-child{ border-bottom:none }
+.dev .dot{ width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none }
+.dev .dot.idle{ background:var(--faint) }
+.dev .nm{ font-size:13px; font-weight:600; flex:1 }
+.dev .st{ font-size:11px; color:var(--muted) }
+.kbd-row{ display:flex; flex-wrap:wrap; gap:7px; margin-top:8px }
+.kbd-row .k{ font-size:11px; color:var(--ink-2); background:rgba(255,255,255,.5); border:1px solid var(--line); border-radius:8px; padding:3px 7px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace }
+[data-theme="dark"] .kbd-row .k{ background:rgba(255,255,255,.06) }
+@media (max-width:1100px){ .ov-layout{ grid-template-columns:1fr } .ov-side{ position:static; order:2 } }
+
+/* ===== 顶栏同步状态芯片 ===== */
+.top-sync{ display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; color:var(--ink-2);
+  background:rgba(255,255,255,.6); border:1px solid var(--line); border-radius:11px; padding:7px 11px; transition:var(--tr); cursor:pointer }
+.top-sync:hover{ border-color:rgba(212,140,59,.4); transform:translateY(-1px) }
+.top-sync i{ width:8px;height:8px;border-radius:50%; background:var(--muted); transition:var(--tr) }
+.top-sync.on i{ background:var(--ok); box-shadow:0 0 0 4px rgba(43,182,115,.16) }
+[data-theme="dark"] .top-sync{ background:rgba(255,255,255,.05) }
+
+/* ===== 底部状态条（工作台操作系统感） ===== */
+.statusbar{ position:fixed; left:0; right:0; bottom:0; height:34px; z-index:40;
+  display:flex; align-items:center; gap:18px; padding:0 22px; font-size:12px; color:var(--muted);
+  background:var(--glass); backdrop-filter:blur(18px) saturate(150%); -webkit-backdrop-filter:blur(18px) saturate(150%);
+  border-top:1px solid var(--glass-border) }
+.statusbar .sb-item{ display:inline-flex; align-items:center; gap:7px; white-space:nowrap }
+.statusbar .sb-dot{ width:7px;height:7px;border-radius:50%; background:var(--ok) }
+.statusbar .sb-sp{ margin-left:auto }
+.statusbar .sb-k{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink-2);
+  background:rgba(255,255,255,.5); border:1px solid var(--line); border-radius:6px; padding:2px 6px; font-size:11px }
+[data-theme="dark"] .statusbar{ background:rgba(20,22,28,.62) }
+[data-theme="dark"] .statusbar .sb-k{ background:rgba(255,255,255,.07) }
+@media (max-width:760px){ .statusbar .sb-hide{ display:none } }
+/* 给主区留出状态条空间，避免被遮挡 */
+.app{ padding-bottom:58px }
 </style>
 </head>
 <body>
@@ -511,6 +561,7 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
       <input id="searchInput" type="text" placeholder="搜索模块、任务、操作…" readonly>
       <span class="kbd">⌘K</span>
     </div>
+    <button class="top-sync" id="topSync" title="云端同步状态 · 点击前往同步"><i></i><span id="topSyncTxt">本地</span></button>
     <div class="top-actions">
       <button class="iconbtn" id="bellBtn" title="通知" aria-label="通知"><span class="bell-dot"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 1112 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 19a2 2 0 004 0" stroke="currentColor" stroke-width="2"/></svg></button>
       <button class="ghostbtn" id="expJson" title="导出备份"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>备份</button>
@@ -565,64 +616,98 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
         <div class="date">你的财务全景 · 数据来自记账本与对账</div>
       </div>
 
-      <div class="ov-kpis" id="ovKpis"></div>
+      <div class="ov-layout">
+        <div class="ov-main">
+          <div class="ov-kpis" id="ovKpis"></div>
 
-      <div class="ov-grid">
-        <div class="glass reveal tilt" data-d="80" style="padding:18px 20px">
-          <div class="card-title"><h3>近 7 日净流</h3><span class="cnt" id="areaMeta">—</span></div>
-          <div class="chart-wrap">
-            <svg id="areaChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg>
-            <div class="chart-tip" id="areaTip"></div>
-          </div>
-        </div>
-        <div class="glass reveal tilt" data-d="140" style="padding:18px 20px">
-          <div class="card-title"><h3>支出分类</h3></div>
-          <div class="donut-wrap">
-            <svg id="donutChart" viewBox="0 0 200 200"></svg>
-            <div class="donut-lab" id="donutLab"><b>¥0</b><span>总支出</span></div>
-          </div>
-          <div class="legend" id="donutLegend"></div>
-        </div>
-      </div>
-
-      <div class="ov-grid2">
-        <div class="glass reveal tilt" data-d="200" style="padding:18px 20px">
-          <div class="card-title"><h3>本月预算</h3><span class="cnt" id="budgetTxt">—</span></div>
-          <div class="budget-row">
-            <div class="budget-ring">
-              <svg viewBox="0 0 120 120" id="budgetSvg"></svg>
-              <div class="budget-center" id="budgetPct">0%</div>
+          <div class="ov-grid">
+            <div class="glass reveal tilt" data-d="80" style="padding:18px 20px">
+              <div class="card-title"><h3>近 7 日净流</h3><span class="cnt" id="areaMeta">—</span></div>
+              <div class="chart-wrap">
+                <svg id="areaChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg>
+                <div class="chart-tip" id="areaTip"></div>
+              </div>
             </div>
-            <div class="budget-side">
-              <div class="lab">已用 <b id="budgetUsed">¥0</b> / 预算 <b id="budgetTotal">¥0</b></div>
-              <div class="budget-bar"><i id="budgetBar" style="width:0%"></i></div>
-              <div class="lab" id="budgetLeft">—</div>
+            <div class="glass reveal tilt" data-d="140" style="padding:18px 20px">
+              <div class="card-title"><h3>支出分类</h3></div>
+              <div class="donut-wrap">
+                <svg id="donutChart" viewBox="0 0 200 200"></svg>
+                <div class="donut-lab" id="donutLab"><b>¥0</b><span>总支出</span></div>
+              </div>
+              <div class="legend" id="donutLegend"></div>
             </div>
           </div>
-        </div>
-        <div class="glass reveal tilt" data-d="260" style="padding:18px 20px">
-          <div class="card-title"><h3>最近记账</h3></div>
-          <div id="ovFlow"></div>
-        </div>
-      </div>
 
-      <div class="ov-actions reveal" data-d="320">
-        <button class="act" data-go="reconcile">
-          <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <div><b>去对账</b><span>双表比对 / id 合并</span></div>
-        </button>
-        <button class="act" data-go="ledger">
-          <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#fff" stroke-width="2"/><path d="M12 8v8M9 10.5h4.5a1.5 1.5 0 010 3H9" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <div><b>记账本</b><span>记录每日收支</span></div>
-        </button>
-        <button class="act" data-go="sync">
-          <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M7 18a4 4 0 010-8 5 5 0 019.6 1.5A3.5 3.5 0 0117 18h-2m-8 0l2-2m0 0l-2-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><b>云端同步</b><span>多设备共享</span></div>
-        </button>
-        <button class="act" id="ovExport">
-          <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-          <div><b>导出备份</b><span>留存本地 JSON</span></div>
-        </button>
+          <div class="ov-grid2">
+            <div class="glass reveal tilt" data-d="200" style="padding:18px 20px">
+              <div class="card-title"><h3>本月预算</h3><span class="cnt" id="budgetTxt">—</span></div>
+              <div class="budget-row">
+                <div class="budget-ring">
+                  <svg viewBox="0 0 120 120" id="budgetSvg"></svg>
+                  <div class="budget-center" id="budgetPct">0%</div>
+                </div>
+                <div class="budget-side">
+                  <div class="lab">已用 <b id="budgetUsed">¥0</b> / 预算 <b id="budgetTotal">¥0</b></div>
+                  <div class="budget-bar"><i id="budgetBar" style="width:0%"></i></div>
+                  <div class="lab" id="budgetLeft">—</div>
+                </div>
+              </div>
+            </div>
+            <div class="glass reveal tilt" data-d="260" style="padding:18px 20px">
+              <div class="card-title"><h3>最近记账</h3></div>
+              <div id="ovFlow"></div>
+            </div>
+          </div>
+
+          <div class="ov-actions reveal" data-d="320">
+            <button class="act" data-go="reconcile">
+              <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
+              <div><b>去对账</b><span>双表比对 / id 合并</span></div>
+            </button>
+            <button class="act" data-go="ledger">
+              <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="#fff" stroke-width="2"/><path d="M12 8v8M9 10.5h4.5a1.5 1.5 0 010 3H9" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
+              <div><b>记账本</b><span>记录每日收支</span></div>
+            </button>
+            <button class="act" data-go="sync">
+              <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M7 18a4 4 0 010-8 5 5 0 019.6 1.5A3.5 3.5 0 0117 18h-2m-8 0l2-2m0 0l-2-2" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <div><b>云端同步</b><span>多设备共享</span></div>
+            </button>
+            <button class="act" id="ovExport">
+              <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <div><b>导出备份</b><span>留存本地 JSON</span></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 情境面板：同步态 / 本月速览 / 多端 / 快捷键 -->
+        <aside class="ov-side">
+          <div class="glass ctx-card reveal" data-d="360">
+            <div class="card-title"><h3>云端同步</h3></div>
+            <div class="ctx-pulse" id="ctxPulse"><i></i><span id="ctxSync">未连接</span></div>
+            <div class="ctx-sub" id="ctxSyncTime">数据仅存于本浏览器 · 点此连接多设备</div>
+          </div>
+          <div class="glass ctx-card reveal" data-d="400">
+            <div class="card-title"><h3>本月净资产</h3></div>
+            <div class="ctx-mini"><b id="ctxNet">¥0</b><span id="ctxNetTrend">—</span></div>
+            <div class="ctx-sub">较上月 <span id="ctxNetDelta">—</span></div>
+          </div>
+          <div class="glass ctx-card reveal" data-d="440">
+            <div class="card-title"><h3>多端设备</h3></div>
+            <div class="dev"><span class="dot"></span><span class="nm">本机 · 工作台</span><span class="st">在线</span></div>
+            <div class="dev"><span class="dot"></span><span class="nm">手机 · 罗炎</span><span class="st">同步中</span></div>
+            <div class="dev"><span class="dot idle"></span><span class="nm">平板 · 备用</span><span class="st">闲置</span></div>
+          </div>
+          <div class="glass ctx-card reveal" data-d="480">
+            <div class="card-title"><h3>快捷键</h3></div>
+            <div class="ctx-sub">键盘流，操作更高效</div>
+            <div class="kbd-row">
+              <span class="k">⌘K</span><span class="k">命令面板</span>
+              <span class="k">⌘1</span><span class="k">概览</span>
+              <span class="k">⌘2</span><span class="k">对账</span>
+              <span class="k">⌘3</span><span class="k">记账本</span>
+            </div>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -880,6 +965,7 @@ async function syncPush(silent){
     WS.sync.lastSync=Date.now();
     setSyncDot(true);
     document.getElementById("syncMeta").textContent="已推送 · "+fmtTime(WS.sync.lastSync);
+    updateSyncStatus();
     saveState();
     if(!silent) toast("已推送到云端 ☁");
   }catch(e){
@@ -910,6 +996,7 @@ async function syncPull(silent){
     saveState();
     restoreAll();
     document.getElementById("syncMeta").textContent="已拉取云端 · 更新于 "+fmtTime(WS.sync.lastSync);
+    updateSyncStatus();
     if(!silent) toast("已从云端拉取 ☁");
   }catch(e){
     setSyncDot(false);
@@ -1597,8 +1684,29 @@ function renderOverview(){
     <div class="kpi-trend ${k.trend}">${k.trend==='up'?'▲':'▼'} ${k.trendTxt}</div>
   </div>`; }).join('');
   drawArea(); drawDonut(); drawBudget(); drawFlow();
+  renderContext(); updateSyncStatus();
   attachTiltAll();
   ovDone=true;
+}
+
+/* 情境面板：净资产速览（来自假数据仪表盘） */
+function renderContext(){
+  const net=OV.kpis[0];
+  const netEl=document.getElementById("ctxNet"); if(netEl) netEl.textContent=(net.pre||"")+fmtMoney(net.to, net.dec);
+  const trEl=document.getElementById("ctxNetTrend"); if(trEl) trEl.textContent=net.trend==="up"?"▲ "+net.trendTxt:"▼ "+net.trendTxt;
+  const dEl=document.getElementById("ctxNetDelta"); if(dEl) dEl.textContent=net.trendTxt;
+}
+
+/* 同步状态：顶栏芯片 + 情境面板 + 底部状态条 三处联动 */
+function updateSyncStatus(){
+  const synced=!!(WS.sync && WS.sync.url);
+  const ts=document.getElementById("topSync"); if(ts) ts.classList.toggle("on", synced);
+  const tt=document.getElementById("topSyncTxt"); if(tt) tt.textContent=synced?"已同步":"本地";
+  const pulse=document.getElementById("ctxPulse"); if(pulse) pulse.classList.toggle("off", !synced);
+  const cs=document.getElementById("ctxSync"); if(cs) cs.textContent=synced?"已连接云端":"未连接";
+  const cst=document.getElementById("ctxSyncTime"); if(cst) cst.textContent=synced?("后端："+WS.sync.url):"数据仅存于本浏览器 · 点此连接多设备";
+  const sb=document.getElementById("sbSync"); if(sb) sb.textContent=synced?"已连接云端":"未连接云端";
+  const dot=document.getElementById("sbSyncDot"); if(dot) dot.style.background=synced?"var(--ok)":"var(--muted)";
 }
 
 /* 主题切换 */
@@ -1693,6 +1801,7 @@ function init(){
   document.querySelectorAll(".act[data-go]").forEach(b=>{ b.onclick=()=>switchModule(b.dataset.go); attachRipple(b); });
   const ovExport=document.getElementById("ovExport"); if(ovExport){ ovExport.onclick=exportJSON; attachRipple(ovExport); }
   document.getElementById("addModule").onclick=()=>toast("想加模块？直接告诉我（记账/习惯/任务/学习…），我来加。当前：对账 ✓");
+  const topSync=document.getElementById("topSync"); if(topSync){ topSync.onclick=()=>switchModule("sync"); attachRipple(topSync); }
 
   document.getElementById("searchInput").addEventListener("focus", openCmd);
   document.getElementById("searchInput").addEventListener("click", openCmd);
@@ -1724,6 +1833,9 @@ function init(){
   applyTheme();
   document.getElementById("themeBtn").onclick=toggleTheme;
   switchModule("overview");
+  updateSyncStatus();
+  const clk=document.getElementById("sbClock");
+  if(clk){ const tick=()=>{ const d=new Date(); const p=n=>String(n).padStart(2,"0"); clk.textContent=p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds()); }; tick(); setInterval(tick,1000); }
   const _root=document.documentElement;
   if(!window.matchMedia || !window.matchMedia("(prefers-reduced-motion: reduce)").matches){
     window.addEventListener("mousemove", e=>{
@@ -1734,5 +1846,16 @@ function init(){
 }
 init();
 </script>
+
+<!-- 底部状态条 -->
+<footer class="statusbar">
+  <div class="sb-item"><span class="sb-dot"></span>本地优先 · 数据仅存于本浏览器</div>
+  <div class="sb-item sb-hide"><span class="sb-dot" id="sbSyncDot" style="background:var(--muted)"></span><span id="sbSync">未连接云端</span></div>
+  <span class="sb-sp"></span>
+  <div class="sb-item sb-hide">多设备同步 · 信任圈共享</div>
+  <div class="sb-item"><span class="sb-k">⌘K</span> 命令面板</div>
+  <div class="sb-item"><span class="sb-k">⌘1–4</span> 切换模块</div>
+  <div class="sb-item" id="sbClock">--:--:--</div>
+</footer>
 </body>
 </html>
