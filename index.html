@@ -611,6 +611,25 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
   .kpi .value{ font-size:28px }
   .topbar .ghostbtn{ display:none }
 }
+/* ============ 飞书模块 ============ */
+.feishu-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 18px; margin-bottom:16px }
+.feishu-status{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); font-weight:600 }
+.feishu-status .sb-dot{ width:8px; height:8px; border-radius:50%; background:var(--faint); flex:none }
+.feishu-table-wrap{ overflow:auto; max-height:58vh; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.35) }
+.feishu-table{ width:100%; border-collapse:collapse; font-size:13px; min-width:580px }
+.feishu-table th,.feishu-table td{ padding:11px 14px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap }
+.feishu-table th{ position:sticky; top:0; background:var(--glass-strong); color:var(--muted); font-weight:700; font-size:12px; z-index:1 }
+.feishu-table tbody tr:hover{ background:var(--amber-soft) }
+.feishu-table .num{ text-align:right; font-variant-numeric:tabular-nums; font-weight:700; color:var(--amber-deep) }
+.feishu-table .fs-vch{ color:var(--muted); font-size:12px; max-width:220px; overflow:hidden; text-overflow:ellipsis }
+.feishu-empty{ padding:32px; text-align:center; color:var(--muted); font-size:13px }
+.feishu-form{ display:flex; flex-direction:column; gap:13px; margin-top:4px }
+.feishu-form label{ display:flex; flex-direction:column; gap:6px; font-size:12.5px; font-weight:600; color:var(--muted) }
+.feishu-form .sync-input{ width:100% }
+.feishu-form-actions{ display:flex; gap:10px; margin-top:4px; flex-wrap:wrap }
+[data-theme="dark"] .feishu-table-wrap{ background:rgba(255,255,255,.04) }
+@media (max-width:920px){ .feishu-table-wrap{ max-height:50vh } }
+
 </style>
 </head>
 <body>
@@ -672,6 +691,10 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
     <div class="nav-item" data-mod="ledger">
       <span class="ic" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M9 10.5h4.5a1.5 1.5 0 010 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
       <span>记账本</span>
+    </div>
+    <div class="nav-item" data-mod="feishu">
+      <span class="ic" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6h16v9H7l-3 3V6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 10h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <span>飞书</span>
     </div>
     <div class="nav-item add" id="addModule">
       <span class="ic" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
@@ -941,6 +964,42 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
       </div>
       <div class="glass reveal" style="--d:0ms;padding:0;overflow:hidden;border-radius:18px">
         <iframe src="https://luoyan12-bv.github.io/expense-ledger/" title="记账本" loading="lazy" style="width:100%;height:78vh;border:0;display:block;background:#fff"></iframe>
+      </div>
+    </section>
+
+    <!-- ============ 模块：飞书（充值台账 + 机器人） ============ -->
+    <section class="module" id="mod-feishu">
+      <div class="page-head reveal">
+        <h2>飞书</h2>
+        <div class="date">快手充值台账 · 飞书机器人 · 数据经云端同步</div>
+      </div>
+
+      <div class="feishu-top glass reveal" style="--d:0ms">
+        <div class="feishu-status"><span class="sb-dot" id="fsDot"></span><span id="fsStatus">读取中…</span></div>
+        <button class="btn btn-ghost" id="fsRefresh">↻ 刷新</button>
+      </div>
+
+      <div class="glass reveal" style="--d:60ms;padding:18px 20px">
+        <div class="card-title"><h3>快手充值台账</h3><a class="btn btn-ghost sm" id="fsOpenBase" target="_blank" rel="noopener">在飞书打开 ↗</a></div>
+        <div class="feishu-table-wrap">
+          <table class="feishu-table">
+            <thead><tr><th>时间</th><th>客户名称</th><th>商务</th><th>类型</th><th class="num">充值金额</th><th>凭证</th></tr></thead>
+            <tbody id="fsBody"></tbody>
+          </table>
+          <div class="feishu-empty" id="fsEmpty" style="display:none">尚未同步，请让我拉取（说「同步飞书」）。</div>
+        </div>
+      </div>
+
+      <div class="glass reveal" style="--d:120ms;padding:18px 20px">
+        <div class="card-title"><h3>飞书机器人</h3><span class="cnt" id="wbStatus">未配置</span></div>
+        <div class="feishu-form">
+          <label>Webhook 地址<input type="url" id="wbUrl" class="sync-input" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."></label>
+          <label>加签密钥（secret，可留空）<input type="password" id="wbSecret" class="sync-input" placeholder="签名密钥"></label>
+          <div class="feishu-form-actions">
+            <button class="btn btn-ghost" id="wbSave">保存</button>
+            <button class="btn soft" id="wbTest">发送测试消息</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1927,6 +1986,82 @@ function switchModule(mod){
   window.scrollTo({top:0,behavior:"smooth"});
   moveInd(mod);
   if(mod==="overview"){ if(!ovDone) renderOverview(); animateOverview(); }
+  if(mod==="feishu"){ loadFeishuWebhook(); fetchFeishu(); }
+}
+
+/* ============================================================
+   飞书模块：充值台账（读 pwb_state id=2）+ 机器人 webhook
+   ============================================================ */
+const FS_BASE_URL = "https://mmmxlwlkj.feishu.cn/base/XGDZbuRs0a31oCsZjCgcNAUgnDf";
+let FS_DATA = null;
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+function fmtFsDate(t){ if(!t) return "—"; const s=String(t).replace("T"," ").replace(/\.\d+/,""); return s.slice(0,16); }
+function fmtFsTime(t){ if(!t) return ""; const s=String(t).replace("T"," ").replace(/\.\d+/,""); return s.slice(0,16); }
+function setFsStatus(text,color){ const e=document.getElementById("fsStatus"); if(e) e.textContent=text; const d=document.getElementById("fsDot"); if(d) d.style.background=color||"var(--faint)"; }
+
+async function fetchFeishu(){
+  if(!WS.sync.url){ setFsStatus("未配置云端","var(--faint)"); renderFsBody([]); return; }
+  setFsStatus("读取中…","var(--faint)");
+  try{
+    const res=await fetch(sbRest(WS.sync.url)+"/pwb_state?id=eq.2&select=data,updated_at",{headers:sbHeaders()});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows=await res.json();
+    const row=rows[0];
+    if(!row||!row.data||!Array.isArray(row.data.records)||!row.data.records.length){ setFsStatus("尚未同步","var(--faint)"); renderFsBody([]); return; }
+    FS_DATA=row.data;
+    renderFsBody(row.data.records);
+    setFsStatus("已同步 · "+fmtFsTime(row.data.updatedAt||row.updated_at),"var(--ok)");
+  }catch(e){ setFsStatus("读取失败","var(--down)"); }
+}
+
+function renderFsBody(recs){
+  const body=document.getElementById("fsBody"); const empty=document.getElementById("fsEmpty");
+  if(!recs||!recs.length){ if(body) body.innerHTML=""; if(empty) empty.style.display="block"; return; }
+  if(empty) empty.style.display="none";
+  body.innerHTML=recs.map(r=>{
+    const v=(r.voucher&&r.voucher.length)?r.voucher.map(x=>esc(x)).join("、"):"—";
+    const amt=(r.amount!=null&&r.amount!=="")?("¥"+Number(r.amount).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2})):"—";
+    return "<tr><td>"+fmtFsDate(r.time)+"</td><td>"+esc(r.customer)+"</td><td>"+esc(r.biz)+"</td><td>"+esc(r.type||"—")+"</td><td class=\"num\">"+amt+"</td><td class=\"fs-vch\">"+v+"</td></tr>";
+  }).join("");
+}
+
+function loadFeishuWebhook(){
+  const w=WS.sync.feishuWebhook||{};
+  const u=document.getElementById("wbUrl"); if(u) u.value=w.url||"";
+  const s=document.getElementById("wbSecret"); if(s) s.value=w.secret||"";
+  const st=document.getElementById("wbStatus"); if(st) st.textContent=(w.url?"已配置":"未配置");
+  const ob=document.getElementById("fsOpenBase"); if(ob) ob.href=FS_BASE_URL;
+}
+
+function saveFeishuWebhook(){
+  WS.sync.feishuWebhook={ url:document.getElementById("wbUrl").value.trim(), secret:document.getElementById("wbSecret").value.trim() };
+  saveState();
+  const st=document.getElementById("wbStatus"); if(st) st.textContent="已配置";
+  toast("机器人配置已保存");
+}
+
+async function feishuSign(secret, ts){
+  const enc=new TextEncoder();
+  const key=await crypto.subtle.importKey("raw", enc.encode(secret), {name:"HMAC", hash:"SHA-256"}, false, ["sign"]);
+  const sig=await crypto.subtle.sign("HMAC", key, enc.encode(ts+"\n"+secret));
+  let bin=""; const bytes=new Uint8Array(sig); for(const b of bytes) bin+=String.fromCharCode(b);
+  return encodeURIComponent(btoa(bin));
+}
+
+async function testFeishuWebhook(){
+  const url=document.getElementById("wbUrl").value.trim();
+  const secret=document.getElementById("wbSecret").value.trim();
+  if(!url){ toast("请先填写 webhook 地址"); return; }
+  if(!confirm("确定向该飞书机器人发送一条测试消息吗？")) return;
+  try{
+    const body={ msg_type:"text", content:{ text:"✅ 个人工作台 · 飞书机器人连接测试成功（"+new Date().toLocaleString("zh-CN")+"）" } };
+    if(secret){ const ts=Math.floor(Date.now()/1000); body.timestamp=String(ts); body.sign=await feishuSign(secret, ts); }
+    const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const j=await res.json().catch(()=>({}));
+    if(res.ok && (j.code===0 || j.StatusCode===0 || !("code" in j))){ toast("测试消息已发送 ✓"); }
+    else { toast("发送失败："+(j.msg||("HTTP "+res.status))); }
+  }catch(e){ toast("发送失败："+e.message); }
 }
 
 /* ripple 点击涟漪 */
@@ -1995,6 +2130,12 @@ async function init(){
   const ovExport=document.getElementById("ovExport"); if(ovExport){ ovExport.onclick=exportJSON; attachRipple(ovExport); }
   document.getElementById("addModule").onclick=()=>toast("想加模块？直接告诉我（记账/习惯/任务/学习…），我来加。当前：对账 ✓");
   const topSync=document.getElementById("topSync"); if(topSync){ topSync.onclick=()=>switchModule("sync"); attachRipple(topSync); }
+
+  document.getElementById("fsRefresh").onclick=()=>fetchFeishu();
+  document.getElementById("wbSave").onclick=()=>saveFeishuWebhook();
+  document.getElementById("wbTest").onclick=()=>testFeishuWebhook();
+  const fsOpenBase=document.getElementById("fsOpenBase"); if(fsOpenBase) fsOpenBase.href=FS_BASE_URL;
+  loadFeishuWebhook();
 
   document.getElementById("searchInput").addEventListener("focus", openCmd);
   document.getElementById("searchInput").addEventListener("click", openCmd);
