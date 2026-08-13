@@ -995,6 +995,7 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
         <div class="feishu-form">
           <label>Webhook 地址<input type="url" id="wbUrl" class="sync-input" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."></label>
           <label>加签密钥（secret，可留空）<input type="password" id="wbSecret" class="sync-input" placeholder="签名密钥"></label>
+          <label>加密口令（填写则本地 AES 加密存储，可留空）<input type="password" id="wbPass" class="sync-input" placeholder="用于加密机器人配置"></label>
           <div class="feishu-form-actions">
             <button class="btn btn-ghost" id="wbSave">保存</button>
             <button class="btn soft" id="wbTest">发送测试消息</button>
@@ -1994,6 +1995,7 @@ function switchModule(mod){
    ============================================================ */
 const FS_BASE_URL = "https://mmmxlwlkj.feishu.cn/base/XGDZbuRs0a31oCsZjCgcNAUgnDf";
 let FS_DATA = null;
+let AGENT_ENC_PASS = ""; // 运行时加密口令（不持久化，仅本次会话，用于本地加密机器人配置）
 
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
 function fmtFsDate(t){ if(!t) return "—"; const s=String(t).replace("T"," ").replace(/\.\d+/,""); return s.slice(0,16); }
@@ -2028,16 +2030,38 @@ function renderFsBody(recs){
 
 function loadFeishuWebhook(){
   const w=WS.sync.feishuWebhook||{};
-  const u=document.getElementById("wbUrl"); if(u) u.value=w.url||"";
-  const s=document.getElementById("wbSecret"); if(s) s.value=w.secret||"";
-  const st=document.getElementById("wbStatus"); if(st) st.textContent=(w.url?"已配置":"未配置");
+  const u=document.getElementById("wbUrl"), s=document.getElementById("wbSecret"), st=document.getElementById("wbStatus");
+  if(w && w.enc){
+    if(AGENT_ENC_PASS){
+      aesDecrypt(w, AGENT_ENC_PASS).then(d=>{
+        if(u) u.value=d.url||""; if(s) s.value=d.secret||"";
+        if(st) st.textContent="已加密·已解锁";
+      }).catch(()=>{ if(u) u.value=""; if(s) s.value=""; if(st) st.textContent="加密口令错误"; });
+    } else {
+      if(u) u.value=""; if(s) s.value="";
+      if(st) st.textContent="已加密·请输入口令";
+    }
+  } else {
+    if(u) u.value=w.url||""; if(s) s.value=w.secret||"";
+    if(st) st.textContent=(w.url?"已配置":"未配置");
+  }
   const ob=document.getElementById("fsOpenBase"); if(ob) ob.href=FS_BASE_URL;
 }
 
-function saveFeishuWebhook(){
-  WS.sync.feishuWebhook={ url:document.getElementById("wbUrl").value.trim(), secret:document.getElementById("wbSecret").value.trim() };
+async function saveFeishuWebhook(){
+  const url=document.getElementById("wbUrl").value.trim();
+  const secret=document.getElementById("wbSecret").value.trim();
+  const pass=document.getElementById("wbPass").value;
+  const st=document.getElementById("wbStatus");
+  if(pass){
+    AGENT_ENC_PASS=pass;
+    WS.sync.feishuWebhook=await aesEncrypt({url, secret}, pass);
+    if(st) st.textContent="已加密保存";
+  } else {
+    WS.sync.feishuWebhook={ url, secret };
+    if(st) st.textContent="已配置(明文)";
+  }
   saveState();
-  const st=document.getElementById("wbStatus"); if(st) st.textContent="已配置";
   toast("机器人配置已保存");
 }
 
@@ -2049,9 +2073,39 @@ async function feishuSign(secret, ts){
   return encodeURIComponent(btoa(bin));
 }
 
+/* 机器人配置本地加密：AES-GCM + PBKDF2 口令派生，密文落盘，口令不落盘 */
+async function deriveKey(pass, salt){
+  const enc=new TextEncoder();
+  const km=await crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:100000, hash:"SHA-256"}, km, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+async function aesEncrypt(obj, pass){
+  const enc=new TextEncoder(), dec=new TextDecoder();
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await deriveKey(pass, salt);
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, enc.encode(JSON.stringify(obj)));
+  let bin=""; const b=new Uint8Array(ct); for(const x of b) bin+=String.fromCharCode(x);
+  return {enc:true, salt:[...salt], iv:[...iv], data:btoa(bin)};
+}
+async function aesDecrypt(p, pass){
+  const dec=new TextDecoder();
+  const salt=new Uint8Array(p.salt), iv=new Uint8Array(p.iv);
+  const key=await deriveKey(pass, salt);
+  const bin=atob(p.data); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, bytes);
+  return JSON.parse(dec.decode(pt));
+}
+
 async function testFeishuWebhook(){
-  const url=document.getElementById("wbUrl").value.trim();
-  const secret=document.getElementById("wbSecret").value.trim();
+  const w=WS.sync.feishuWebhook||{};
+  let url, secret;
+  if(w.enc){
+    if(!AGENT_ENC_PASS){ toast("请先在口令框输入加密口令解锁"); return; }
+    try{ const d=await aesDecrypt(w, AGENT_ENC_PASS); url=d.url||""; secret=d.secret||""; }
+    catch(e){ toast("加密口令错误"); return; }
+  } else { url=w.url||""; secret=w.secret||""; }
+  url=(url||"").trim(); secret=(secret||"").trim();
   if(!url){ toast("请先填写 webhook 地址"); return; }
   if(!confirm("确定向该飞书机器人发送一条测试消息吗？")) return;
   try{
