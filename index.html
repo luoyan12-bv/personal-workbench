@@ -1862,7 +1862,7 @@ function processLedgerRows(rows){
   ];
   OV.area=area;
   OV.donut=donut.length?donut:[{n:"暂无数据",v:1,c:"#6b7280"}];
-  OV.budget={total:budgetTotal||12000,used:monthTotal};
+  OV.budget={total:budgetTotal||12000,used:monthDone+monthPending}; // 已用 = 已报销 + 待报销（未报销一并计入预算占用）
   OV.flow=flow.length?flow:[{c:"提示",t:`${mLabel}暂无记账记录`,a:0,ic:"#6b7280"}];
 }
 function fmtMoney(v,dec){ return Number(v).toLocaleString('zh-CN',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
