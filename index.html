@@ -639,6 +639,18 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 [data-theme="dark"] .feishu-table-wrap{ background:rgba(255,255,255,.04) }
 @media (max-width:920px){ .feishu-table-wrap{ max-height:50vh } }
 
+/* ============ 消耗账单模块 ============ */
+.bill-topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+.bill-sync{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--muted) }
+.bill-empty{ padding:28px 16px; text-align:center; color:var(--faint); font-size:13px }
+.bill-bars{ display:flex; flex-direction:column; gap:13px }
+.bill-bar-row{ display:flex; align-items:center; gap:12px }
+.bill-bar-name{ width:112px; flex:none; font-size:13px; font-weight:600; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.bill-bar-track{ flex:1; height:22px; border-radius:999px; background:var(--glass-strong); border:1px solid var(--glass-border); overflow:hidden }
+.bill-bar-fill{ height:100%; border-radius:999px; transition:width .6s var(--ease) }
+.bill-bar-num{ width:116px; flex:none; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; color:var(--amber-deep); font-size:13px }
+@media (max-width:640px){ .bill-bar-name{ width:72px } .bill-bar-num{ width:90px } .bill-bar-row{ gap:8px } }
+
 /* ===================== 视觉精修：层级统一 · 微交互 · 排版节奏 ===================== */
 /* 卡片悬停：边框高亮（阴影由各组件自身 hover 控制，避免层叠冲突） */
 .glass:hover{ border-color:rgba(212,140,59,.26) }
@@ -743,6 +755,10 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
     <div class="nav-item" data-mod="feishu">
       <span class="ic" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 6h16v9H7l-3 3V6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 10h8M8 13h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
       <span>飞书</span>
+    </div>
+    <div class="nav-item" data-mod="bill">
+      <span class="ic" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v10M15 9.5c0-1.1-1-1.8-3-1.8s-3 .7-3 1.6c0 2 6 1 6 3 0 .9-1 1.6-3 1.6s-3-.7-3-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <span>消耗账单</span>
     </div>
     <div class="nav-item add" id="addModule">
       <span class="ic" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
@@ -852,6 +868,8 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
               <span class="k">⌘1</span><span class="k">概览</span>
               <span class="k">⌘2</span><span class="k">对账</span>
               <span class="k">⌘3</span><span class="k">记账本</span>
+              <span class="k">⌘4</span><span class="k">飞书</span>
+              <span class="k">⌘5</span><span class="k">消耗账单</span>
             </div>
           </div>
         </aside>
@@ -1052,6 +1070,47 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
       </div>
     </section>
 
+    <!-- ============ 模块：消耗账单（信息流账户消耗汇总） ============ -->
+    <section class="module" id="mod-bill">
+      <div class="page-head reveal">
+        <h2>消耗账单</h2>
+        <div class="date">磁力金牛报表 · 日报 / 周报 / 月报 · 自动从邮箱同步</div>
+      </div>
+
+      <!-- 报表类型 Tab + 同步状态 -->
+      <div class="glass reveal bill-topbar" style="--d:0ms;padding:14px 20px;margin-bottom:18px">
+        <div class="vseg" id="billSeg">
+          <div class="vtab on" data-billtab="daily">日报</div>
+          <div class="vtab" data-billtab="weekly">周报</div>
+          <div class="vtab" data-billtab="monthly">月报</div>
+        </div>
+        <div class="bill-sync">
+          <span class="sb-dot" id="billSyncDot"></span><span id="billSyncTxt">读取中…</span>
+          <button class="btn btn-ghost sm" id="billRefresh">↻ 刷新</button>
+        </div>
+      </div>
+
+      <!-- 总消耗 KPI -->
+      <div class="stats" id="billStats"></div>
+
+      <!-- 各商务合并消耗 -->
+      <div class="glass reveal" style="--d:60ms;padding:18px 20px;margin-bottom:18px">
+        <div class="card-title"><span class="idx" style="width:24px;height:24px;border-radius:7px;background:var(--amber-soft);color:var(--amber-deep);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">¥</span><h3>各商务合并消耗</h3><span class="cnt" id="billBizCnt">—</span></div>
+        <div id="billBizs"></div>
+      </div>
+
+      <!-- 账户明细 -->
+      <div class="glass reveal" style="--d:120ms;padding:18px 20px;margin-bottom:18px">
+        <div class="card-title"><h3>账户明细</h3><span class="cnt" id="billCnt">—</span><button class="btn btn-ghost sm" id="billExport" style="margin-left:auto">导出 CSV</button></div>
+        <div class="reswrap">
+          <table id="billTable"></table>
+        </div>
+        <div class="bill-empty" id="billEmpty" style="display:none">该类报表尚未收到，等待推送后自动同步。</div>
+      </div>
+
+      <div class="note" id="billNote">数据由每天定时从 QQ 邮箱自动同步磁力金牛报表（日报/周报/月报），每类只保留最新一份。如需立即同步，对我说「同步消耗」即可手动拉取一次。</div>
+    </section>
+
   </main>
 </div>
 
@@ -1070,6 +1129,8 @@ let WS = {
   theme:"dark",
   // 对账模块：A/B 两表、对账结果、筛选与视图状态
   reconcile:{ A:null, B:null, results:[], filter:"ALL", view:"detail", mergeMode:false },
+  // 消耗账单模块：磁力金牛报表（日/周/月），每类保留最新一份云端快照
+  bill:{ tab:"daily", reports:{ daily:null, weekly:null, monthly:null } },
   // 云端同步配置（仅本机保存，不上云）
   sync:{ url:"https://wvniuyfnuyrebowjlxbi.supabase.co", auto:false, lastSync:null }
 };
@@ -1080,6 +1141,9 @@ function loadState(){
     if(raw){
       const o = JSON.parse(raw);
       if(o && o.reconcile) WS.reconcile = Object.assign(WS.reconcile, o.reconcile);
+      if(o && o.bill) WS.bill = Object.assign(WS.bill, o.bill);
+      if(!WS.bill.reports) WS.bill.reports = { daily:null, weekly:null, monthly:null };
+      if(!WS.bill.tab) WS.bill.tab = "daily";
       if(o && o.sync) WS.sync = Object.assign(WS.sync, o.sync);
       if(o && o.theme) WS.theme = o.theme;
       if(!WS.sync.url) WS.sync.url = "https://wvniuyfnuyrebowjlxbi.supabase.co";
@@ -1735,6 +1799,7 @@ function restoreReconcile(){
 const CMD_LIST = [
   {key:"overview", label:"切换到 概览", mod:"overview", icon:"grid"},
   {key:"reconcile", label:"切换到 对账", mod:"reconcile", icon:"list"},
+  {key:"bill", label:"切换到 消耗账单", mod:"bill", icon:"doc"},
   {key:"sample", label:"载入对账示例数据", act:"sample", icon:"doc"},
   {key:"run", label:"运行对账", act:"run", icon:"play"},
   {key:"idmerge", label:"仅按 id 合并两张表", act:"idmerge", icon:"play"},
@@ -2036,6 +2101,7 @@ function switchModule(mod){
   moveInd(mod);
   if(mod==="overview"){ if(!ovDone) renderOverview(); animateOverview(); }
   if(mod==="feishu"){ loadFeishuWebhook(); fetchFeishu(); }
+  if(mod==="bill"){ renderBill(); fetchBillCloud(); }
 }
 
 /* ============================================================
@@ -2166,6 +2232,85 @@ async function testFeishuWebhook(){
   }catch(e){ toast("发送失败："+e.message); }
 }
 
+/* ============================================================
+   消耗账单模块：磁力金牛报表（日/周/月）云端展示
+   ============================================================ */
+const BILL_TABS = { daily:"日报", weekly:"周报", monthly:"月报" };
+function billMoney(n){ return "¥"+Number(n||0).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function billBizName(s){ const t=String(s==null?"":s).trim(); const m=t.match(/^([^\(（]+)/); return m?m[1].trim():t; }
+function billReport(){ const r=(WS.bill&&WS.bill.reports)?WS.bill.reports:{}; return r[WS.bill.tab||"daily"]||null; }
+
+function setBillSync(txt,color){ const t=document.getElementById("billSyncTxt"); if(t) t.textContent=txt; const d=document.getElementById("billSyncDot"); if(d) d.style.background=color||"var(--faint)"; }
+
+function fetchBillCloud(){
+  if(!WS.sync.url){ setBillSync("未配置云端","var(--faint)"); renderBill(); return; }
+  setBillSync("同步中…","var(--faint)");
+  fetch(sbRest(WS.sync.url)+"/pwb_state?id=eq.3&select=data",{headers:sbHeaders()})
+    .then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(rows=>{
+      const d=(rows&&rows[0]&&rows[0].data)?rows[0].data:{};
+      WS.bill.reports={ daily:d.daily||null, weekly:d.weekly||null, monthly:d.monthly||null };
+      saveState();
+      setBillSync("已同步","var(--ok)");
+      renderBill();
+    })
+    .catch(()=>{ setBillSync("同步失败（用本地缓存）","var(--down)"); renderBill(); });
+}
+
+function renderBill(){
+  const tab=WS.bill.tab||"daily";
+  const rep=billReport();
+  const statsEl=document.getElementById("billStats");
+  const bizsEl=document.getElementById("billBizs");
+  const bizCnt=document.getElementById("billBizCnt");
+  const tableEl=document.getElementById("billTable");
+  const cntEl=document.getElementById("billCnt");
+  const emptyEl=document.getElementById("billEmpty");
+  document.querySelectorAll("#billSeg .vtab").forEach(t=>t.classList.toggle("on", t.dataset.billtab===tab));
+  if(!rep){
+    if(statsEl) statsEl.innerHTML='<div class="stat k-info"><div class="k">'+BILL_TABS[tab]+'</div><div class="v">未收到</div></div>';
+    if(bizsEl) bizsEl.innerHTML="";
+    if(bizCnt) bizCnt.textContent="";
+    if(tableEl) tableEl.innerHTML="";
+    if(cntEl) cntEl.textContent="";
+    if(emptyEl) emptyEl.style.display="block";
+    return;
+  }
+  if(emptyEl) emptyEl.style.display="none";
+  const bizs=rep.bizs||[];
+  const accounts=bizs.flatMap(b=>(b.accounts||[]).map(a=>Object.assign({},a,{biz:b.biz})));
+  if(statsEl) statsEl.innerHTML=[
+    {k:BILL_TABS[tab]+"总消耗",v:billMoney(rep.total),cls:"k-ok"},
+    {k:"商务数",v:bizs.length,cls:"k-violet"},
+    {k:"账户数",v:accounts.length,cls:"k-info"},
+    {k:"报表日期",v:rep.date||"—",cls:"k-warn",small:true}
+  ].map(s=>'<div class="stat '+s.cls+'"><div class="k">'+s.k+'</div><div class="v'+(s.small?" small":"")+'">'+s.v+'</div></div>').join("");
+  const max=Math.max(1,...bizs.map(b=>b.spent));
+  const colors=["linear-gradient(90deg,var(--amber),var(--amber-deep))","linear-gradient(90deg,var(--aurora),#3f6fd6)","linear-gradient(90deg,var(--violet),#7d5bd0)","linear-gradient(90deg,#3FB98A,#2a8f68)"];
+  if(bizsEl) bizsEl.innerHTML='<div class="bill-bars">'+bizs.map((b,i)=>{
+    const pct=(b.spent/max*100).toFixed(1);
+    return '<div class="bill-bar-row"><div class="bill-bar-name">'+esc(billBizName(b.biz))+'</div><div class="bill-bar-track"><div class="bill-bar-fill" style="width:'+pct+'%;background:'+colors[i%colors.length]+'"></div></div><div class="bill-bar-num">'+billMoney(b.spent)+'</div></div>';
+  }).join("")+'</div>';
+  if(bizCnt) bizCnt.textContent=bizs.length+" 个商务";
+  if(cntEl) cntEl.textContent=accounts.length+" 个账户";
+  if(tableEl){
+    const head=["账户","商务","消耗(元)"];
+    tableEl.innerHTML="<thead><tr>"+head.map(h=>'<th>'+h+'</th>').join("")+"</tr></thead><tbody>"+
+      accounts.map(a=>'<tr><td>'+esc(a.account||"—")+'</td><td>'+esc(billBizName(a.biz))+'</td><td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:var(--amber-deep)">'+billMoney(a.spent)+'</td></tr>').join("")+"</tbody>";
+  }
+}
+
+function exportBillCsv(){
+  const rep=billReport();
+  if(!rep){ toast("当前暂无数据可导出"); return; }
+  const accounts=(rep.bizs||[]).flatMap(b=>(b.accounts||[]).map(a=>Object.assign({},a,{biz:b.biz})));
+  const head=["账户","商务","消耗(元)"];
+  const q=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const csv=[head.join(",")].concat(accounts.map(a=>[a.account||"",billBizName(a.biz),Number(a.spent||0).toFixed(2)].map(q).join(","))).join("\n");
+  const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=BILL_TABS[WS.bill.tab||"daily"]+"-消耗.csv"; a.click(); URL.revokeObjectURL(a.href);
+}
+
 /* ripple 点击涟漪 */
 function attachRipple(el){
   el.addEventListener("click", e=>{
@@ -2184,7 +2329,7 @@ function attachRipple(el){
 function doClearAll(){
   if(confirm("确定清空全部工作台数据？此操作不可撤销，建议先点「备份」。")){
     localStorage.removeItem(LS_KEY);
-    WS = { theme:WS.theme, reconcile:{A:null,B:null,results:[],filter:"ALL",view:"detail",mergeMode:false}, sync:WS.sync };
+    WS = { theme:WS.theme, reconcile:{A:null,B:null,results:[],filter:"ALL",view:"detail",mergeMode:false}, bill:{tab:"daily",reports:{daily:null,weekly:null,monthly:null}}, sync:WS.sync };
     clearSample();
     document.getElementById("pasteA").value=""; document.getElementById("pasteB").value="";
     toast("已清空全部数据");
@@ -2239,6 +2384,11 @@ async function init(){
   const fsOpenBase=document.getElementById("fsOpenBase"); if(fsOpenBase) fsOpenBase.href=FS_BASE_URL;
   loadFeishuWebhook();
 
+  /* 消耗账单模块绑定 */
+  document.getElementById("billExport").onclick=exportBillCsv;
+  document.getElementById("billRefresh").onclick=fetchBillCloud;
+  document.querySelectorAll("#billSeg .vtab").forEach(t=>{ t.onclick=()=>{ WS.bill.tab=t.dataset.billtab; saveState(); renderBill(); }; });
+
   document.getElementById("searchInput").addEventListener("focus", openCmd);
   document.getElementById("searchInput").addEventListener("click", openCmd);
   document.getElementById("cmdInput").addEventListener("input", e=>renderCmd(e.target.value));
@@ -2290,7 +2440,7 @@ init();
   <span class="sb-sp"></span>
   <div class="sb-item sb-hide">多设备同步 · 信任圈共享</div>
   <div class="sb-item"><span class="sb-k">⌘K</span> 命令面板</div>
-  <div class="sb-item"><span class="sb-k">⌘1–4</span> 切换模块</div>
+  <div class="sb-item"><span class="sb-k">⌘1–5</span> 切换模块</div>
   <div class="sb-item" id="sbClock">--:--:--</div>
 </footer>
 </body>
