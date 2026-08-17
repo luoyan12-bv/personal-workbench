@@ -2283,7 +2283,7 @@ function renderBill(){
     {k:BILL_TABS[tab]+"总消耗",v:billMoney(rep.total),cls:"k-ok"},
     {k:"商务数",v:bizs.length,cls:"k-violet"},
     {k:"账户数",v:accounts.length,cls:"k-info"},
-    {k:"报表日期",v:rep.date||"—",cls:"k-warn",small:true}
+    {k:(rep.dateRange?"覆盖周期":"报表日期"),v:rep.dateRange||rep.date||"—",cls:"k-warn",small:true}
   ].map(s=>'<div class="stat '+s.cls+'"><div class="k">'+s.k+'</div><div class="v'+(s.small?" small":"")+'">'+s.v+'</div></div>').join("");
   const max=Math.max(1,...bizs.map(b=>b.spent));
   const colors=["linear-gradient(90deg,var(--amber),var(--amber-deep))","linear-gradient(90deg,var(--aurora),#3f6fd6)","linear-gradient(90deg,var(--violet),#7d5bd0)","linear-gradient(90deg,#3FB98A,#2a8f68)"];
