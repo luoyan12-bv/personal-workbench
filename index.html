@@ -11,19 +11,23 @@
 <title>个人工作台 · 琥珀与极光</title>
 <style>
 :root{
-  --bg:#FDFBF7;
-  --glass:rgba(255,255,255,0.62);
-  --glass-strong:rgba(255,255,255,0.80);
-  --amber:#D48C3B;  --amber-soft:#FBEAD2; --amber-deep:#B9742A;
+  --bg:#FBF9F4;
+  --glass:rgba(255,255,255,0.56);
+  --glass-strong:rgba(255,255,255,0.84);
+  --amber:#D48C3B;  --amber-soft:#F6E6CC; --amber-deep:#B9742A;
   --aurora:#5B8DEF; --aurora-soft:#E4EDFD;
-  --violet:#9B7BE8; --violet-soft:#EFE8FB;
-  --ink:#1C1C1E; --ink-2:#3A3A3E; --muted:#55555B; --faint:#94949A;
-  --line:rgba(28,28,30,0.14);
-  --glass-border:rgba(28,28,30,0.12);
+  --violet:#9B7BE8; --violet-soft:#EEE7FB;
+  --ink:#1B1B1D; --ink-2:#38383C; --muted:#5A5A60; --faint:#8B8B91;
+  --line:rgba(28,28,30,0.13);
+  --glass-border:rgba(28,28,30,0.10);
   --ok:#2BB673; --down:#E2675F;
-  --r:22px; --r-sm:14px;
-  --tr:200ms cubic-bezier(.16,1,.3,1);
-  --ease:cubic-bezier(.16,1,.3,1);
+  --r-xs:10px; --r-sm:14px; --r:20px; --r-lg:26px;
+  --tr:220ms cubic-bezier(.22,.9,.3,1);
+  --ease:cubic-bezier(.22,.9,.3,1);
+  --sh-1:0 1px 2px rgba(28,28,30,.04), 0 4px 12px rgba(28,28,30,.05);
+  --sh-2:0 2px 4px rgba(28,28,30,.04), 0 10px 26px rgba(28,28,30,.08);
+  --sh-3:0 4px 8px rgba(28,28,30,.05), 0 20px 48px rgba(28,28,30,.13);
+  --sh-glass:inset 0 1px 0 rgba(255,255,255,.82), 0 1px 2px rgba(28,28,30,.03), 0 16px 40px rgba(120,90,50,.12);
 }
 *{box-sizing:border-box}
 /* KPI 卡片网格：替代原 Tailwind 的 grid grid-cols-2 / md:grid-cols-4 / gap-4 */
@@ -57,8 +61,9 @@ button{font-family:inherit;cursor:pointer}
   backdrop-filter:blur(24px) saturate(150%);
   -webkit-backdrop-filter:blur(24px) saturate(150%);
   border:1px solid var(--glass-border);
-  box-shadow:0 14px 38px rgba(120,90,50,.16), inset 0 1px 0 rgba(255,255,255,.9);
+  box-shadow:var(--sh-glass);
   border-radius:var(--r);
+  transition:border-color var(--tr), box-shadow var(--tr), transform var(--tr);
 }
 .glass-strong{background:var(--glass-strong)}
 
@@ -380,13 +385,17 @@ th{background:var(--glass-strong);color:var(--ink-2);font-weight:600;position:st
 
 /* ===================== 新增：概览仪表盘 / 明暗主题 / 富交互 ===================== */
 [data-theme="dark"]{
-  --bg:#0E0F13; --glass:rgba(26,28,36,.62); --glass-strong:rgba(34,37,48,.82);
-  --amber:#E8A33D; --amber-soft:rgba(232,163,61,.16); --amber-deep:#C9852B;
-  --aurora:#6FA0F5; --aurora-soft:rgba(111,160,245,.16);
-  --violet:#A98BF0; --violet-soft:rgba(169,139,240,.16);
-  --ink:#F3F1EC; --ink-2:#CFCDC7; --muted:#A8A6A0; --faint:#7E7C76;
-  --line:rgba(255,255,255,.16);
-  --glass-border:rgba(255,255,255,.16);
+  --bg:#0C0D11; --glass:rgba(26,28,36,.58); --glass-strong:rgba(36,39,50,.86);
+  --amber:#E8A33D; --amber-soft:rgba(232,163,61,.15); --amber-deep:#C9852B;
+  --aurora:#6FA0F5; --aurora-soft:rgba(111,160,245,.15);
+  --violet:#A98BF0; --violet-soft:rgba(169,139,240,.15);
+  --ink:#F4F2ED; --ink-2:#D0CEC8; --muted:#A6A49E; --faint:#7C7A74;
+  --line:rgba(255,255,255,.14);
+  --glass-border:rgba(255,255,255,.14);
+  --sh-1:0 1px 2px rgba(0,0,0,.4);
+  --sh-2:0 10px 28px rgba(0,0,0,.4);
+  --sh-3:0 20px 50px rgba(0,0,0,.5);
+  --sh-glass:inset 0 1px 0 rgba(255,255,255,.08), 0 18px 48px rgba(0,0,0,.42);
 }
 [data-theme="dark"] body{
   background:
@@ -629,6 +638,45 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 .feishu-form-actions{ display:flex; gap:10px; margin-top:4px; flex-wrap:wrap }
 [data-theme="dark"] .feishu-table-wrap{ background:rgba(255,255,255,.04) }
 @media (max-width:920px){ .feishu-table-wrap{ max-height:50vh } }
+
+/* ===================== 视觉精修：层级统一 · 微交互 · 排版节奏 ===================== */
+/* 卡片悬停：边框高亮（阴影由各组件自身 hover 控制，避免层叠冲突） */
+.glass:hover{ border-color:rgba(212,140,59,.26) }
+[data-theme="dark"] .glass:hover{ border-color:rgba(232,163,61,.32) }
+
+/* 可点击控件按压反馈 */
+.btn:active,.addbtn:active,.iconbtn:active,.themebtn:active,.ghostbtn:active,.act:active,.ctab:active,.fbtn:active{ transform:scale(.97) translateY(0) }
+.btn,.addbtn,.iconbtn,.themebtn,.ghostbtn,.act,.ctab,.fbtn{ will-change:transform }
+
+/* 输入控件悬停提示 */
+.sync-input:hover,textarea:hover,input[type=number]:hover,select:hover{ border-color:rgba(212,140,59,.42) }
+[data-theme="dark"] .sync-input:hover,[data-theme="dark"] textarea:hover,[data-theme="dark"] input[type=number]:hover,[data-theme="dark"] select:hover{ border-color:rgba(232,163,61,.4) }
+
+/* 导航项按压 */
+.nav-item:active{ transform:scale(.98) }
+
+/* 滚动条（WebKit）：统一质感 */
+::-webkit-scrollbar{ width:10px;height:10px }
+::-webkit-scrollbar-thumb{ background:rgba(28,28,30,.16);border-radius:999px;border:2px solid transparent;background-clip:content-box }
+::-webkit-scrollbar-thumb:hover{ background:rgba(28,28,30,.3);background-clip:content-box }
+::-webkit-scrollbar-track{ background:transparent }
+[data-theme="dark"] ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18);background-clip:content-box }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.32);background-clip:content-box }
+
+/* 排版节奏：标题字重与字距 */
+.page-head h2{ font-weight:750;letter-spacing:-.55px }
+.card-title h3{ letter-spacing:-.2px }
+.kpi-val{ letter-spacing:-.6px }
+.brand h1{ letter-spacing:-.35px }
+
+/* 表格行过渡 */
+.reswrap tbody tr,.feishu-table tbody tr{ transition:background var(--tr) }
+
+/* 图表悬停点反馈 */
+.dot-pt{ transition:r .18s,opacity .18s }
+
+/* 焦点可见性：键盘导航更清晰 */
+:focus-visible{ outline:3px solid rgba(212,140,59,.5);outline-offset:2px;border-radius:12px }
 
 </style>
 </head>
@@ -1748,9 +1796,9 @@ const LEDGER_SUPABASE_URL='https://wvniuyfnuyrebowjlxbi.supabase.co';
 const LEDGER_SUPABASE_KEY='sb_publishable_Ku0efv21pS5y5rS4cQDXpA_-ifqshOX';
 const LEDGER_TABLE='records';
 const EXPENSE_TYPE_META={
-  travel:{name:'差旅',color:'#3b82f6'}, meal:{name:'餐饮',color:'#f59e0b'}, office:{name:'办公',color:'#10b981'},
-  traffic:{name:'交通',color:'#06b6d4'}, comm:{name:'通讯',color:'#8b5cf6'}, ent:{name:'招待',color:'#ec4899'},
-  smoke:{name:'烟酒',color:'#d97706'}, other:{name:'其他',color:'#6b7280'}
+  travel:{name:'差旅',color:'#5B8DEF'}, meal:{name:'餐饮',color:'#D48C3B'}, office:{name:'办公',color:'#2BB673'},
+  traffic:{name:'交通',color:'#2FA9B8'}, comm:{name:'通讯',color:'#9B7BE8'}, ent:{name:'招待',color:'#D4688A'},
+  smoke:{name:'烟酒',color:'#B9742A'}, other:{name:'其他',color:'#94949A'}
 };
 
 const OV = {
@@ -1789,9 +1837,9 @@ async function fetchLedgerData(){
       k.trendTxt=["较上月 +5.2%","占 66.5%","17 笔待处理","本周 +9 笔"][i];
     });
     OV.area=[ {d:"周一",v:320},{d:"周二",v:150},{d:"周三",v:540},{d:"周四",v:210},{d:"周五",v:90},{d:"周六",v:680},{d:"周日",v:430} ];
-    OV.donut=[ {n:"餐饮",v:3120,c:"#f59e0b"},{n:"交通",v:1480,c:"#06b6d4"},{n:"办公",v:2260,c:"#10b981"},{n:"通讯",v:900,c:"#8b5cf6"},{n:"其他",v:678,c:"#6b7280"} ];
+    OV.donut=[ {n:"餐饮",v:3120,c:"#D48C3B"},{n:"交通",v:1480,c:"#2FA9B8"},{n:"办公",v:2260,c:"#2BB673"},{n:"通讯",v:900,c:"#9B7BE8"},{n:"其他",v:678,c:"#94949A"} ];
     OV.budget={total:12000,used:9438};
-    OV.flow=[ {c:"餐饮",t:"星巴克 · 拿铁",a:-38,ic:"#f59e0b"},{c:"交通",t:"地铁通勤",a:-6,ic:"#06b6d4"},{c:"办公",t:"京东 · 办公用品",a:-299,ic:"#10b981"},{c:"通讯",t:"话费充值",a:-100,ic:"#8b5cf6"},{c:"餐饮",t:"客户聚餐",a:-580,ic:"#f59e0b"} ];
+    OV.flow=[ {c:"餐饮",t:"星巴克 · 拿铁",a:-38,ic:"#D48C3B"},{c:"交通",t:"地铁通勤",a:-6,ic:"#2FA9B8"},{c:"办公",t:"京东 · 办公用品",a:-299,ic:"#2BB673"},{c:"通讯",t:"话费充值",a:-100,ic:"#9B7BE8"},{c:"餐饮",t:"客户聚餐",a:-580,ic:"#D48C3B"} ];
     return false;
   }
 }
