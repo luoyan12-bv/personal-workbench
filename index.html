@@ -115,6 +115,11 @@ button{font-family:inherit;cursor:pointer}
   border-radius:4px;background:linear-gradient(var(--amber),var(--aurora))}
 .nav-item.add{color:var(--faint);border:1px dashed var(--line);background:transparent;font-weight:500}
 .nav-item.add .ic{background:rgba(255,255,255,.5);color:var(--faint)}
+.nav-item[data-mod]{cursor:grab}
+.nav-item[data-mod]:active{cursor:grabbing}
+.nav-item[data-mod]:hover::after{content:"拖拽排序";position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--faint);opacity:0;transition:var(--tr)}
+@media(hover:hover){.nav-item[data-mod]:hover::after{opacity:.7}}
+@media (max-width:920px){.nav-item[data-mod]:hover::after{display:none}}
 .side-foot{margin-top:auto;padding:12px;font-size:11.5px;color:var(--faint);line-height:1.5}
 .main{flex:1;min-width:0}
 .module{display:none}
@@ -842,25 +847,30 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 
         <!-- 情境面板：同步态 / 本月速览 / 多端 / 快捷键 -->
         <aside class="ov-side">
-          <div class="glass ctx-card reveal" data-d="360">
+          <div class="glass ctx-card reveal" style="--d:360ms">
             <div class="card-title"><h3>云端同步</h3></div>
             <div class="ctx-pulse" id="ctxPulse"><i></i><span id="ctxSync">未连接</span></div>
             <div class="ctx-sub" id="ctxSyncTime">数据仅存于本浏览器 · 点此连接多设备</div>
           </div>
-          <div class="glass ctx-card reveal" data-d="400">
+          <div class="glass ctx-card reveal" style="--d:400ms">
             <div class="card-title"><h3>本月支出速览</h3></div>
             <div class="ctx-mini"><b id="ctxNet">¥0</b><span id="ctxNetTrend">—</span></div>
             <div class="ctx-sub">较上月 <span id="ctxNetDelta">—</span></div>
             <div class="ctx-sub" style="margin-top:8px;display:flex;align-items:center;gap:6px"><span id="ctxDataDot" class="sb-dot" style="background:var(--faint)"></span><span id="ctxDataSource">演示数据</span></div>
             <div class="ctx-sub" id="ctxFallback" style="margin-top:6px;color:var(--amber-deep);font-weight:600;display:none"></div>
           </div>
-          <div class="glass ctx-card reveal" data-d="440">
+          <div class="glass ctx-card reveal" style="--d:420ms">
+            <div class="card-title"><h3>今日待办</h3><span class="cnt" id="todoCnt">—</span></div>
+            <div id="todoList"></div>
+            <div class="task-add"><input id="todoInput" placeholder="添加待办，回车保存" maxlength="60"><button class="addbtn" id="todoAdd" aria-label="添加待办">+</button></div>
+          </div>
+          <div class="glass ctx-card reveal" style="--d:440ms">
             <div class="card-title"><h3>多端设备</h3></div>
             <div class="dev"><span class="dot"></span><span class="nm">本机 · 工作台</span><span class="st">在线</span></div>
             <div class="dev"><span class="dot"></span><span class="nm">手机 · 罗炎</span><span class="st">同步中</span></div>
             <div class="dev"><span class="dot idle"></span><span class="nm">平板 · 备用</span><span class="st">闲置</span></div>
           </div>
-          <div class="glass ctx-card reveal" data-d="480">
+          <div class="glass ctx-card reveal" style="--d:480ms">
             <div class="card-title"><h3>快捷键</h3></div>
             <div class="ctx-sub">键盘流，操作更高效</div>
             <div class="kbd-row">
@@ -1131,6 +1141,10 @@ let WS = {
   reconcile:{ A:null, B:null, results:[], filter:"ALL", view:"detail", mergeMode:false },
   // 消耗账单模块：磁力金牛报表（日/周/月），每类保留最新一份云端快照
   bill:{ tab:"daily", reports:{ daily:null, weekly:null, monthly:null } },
+  // 今日待办（概览侧栏卡片）
+  todo:{ items:[] },
+  // 侧边导航自定义排序（模块 key 数组）
+  navOrder:[],
   // 云端同步配置（仅本机保存，不上云）
   sync:{ url:"https://wvniuyfnuyrebowjlxbi.supabase.co", auto:false, lastSync:null }
 };
@@ -1144,6 +1158,8 @@ function loadState(){
       if(o && o.bill) WS.bill = Object.assign(WS.bill, o.bill);
       if(!WS.bill.reports) WS.bill.reports = { daily:null, weekly:null, monthly:null };
       if(!WS.bill.tab) WS.bill.tab = "daily";
+      if(o && o.todo && Array.isArray(o.todo.items)) WS.todo = { items:o.todo.items };
+      if(o && Array.isArray(o.navOrder)) WS.navOrder = o.navOrder;
       if(o && o.sync) WS.sync = Object.assign(WS.sync, o.sync);
       if(o && o.theme) WS.theme = o.theme;
       if(!WS.sync.url) WS.sync.url = "https://wvniuyfnuyrebowjlxbi.supabase.co";
@@ -2074,11 +2090,13 @@ function updateSyncStatus(){
   const dot=document.getElementById("sbSyncDot"); if(dot) dot.style.background=synced?"var(--ok)":"var(--muted)";
 }
 
-/* 主题切换 */
+/* 主题切换：浅色 / 深色 / 自动（日浅夜深，白天 7:00-19:00） */
 const ICON_MOON='<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 109.8 9.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
 const ICON_SUN='<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-function applyTheme(){ document.documentElement.setAttribute('data-theme', WS.theme); const b=document.getElementById('themeBtn'); if(b) b.innerHTML = WS.theme==='dark'? ICON_SUN : ICON_MOON; }
-function toggleTheme(){ WS.theme = WS.theme==='dark'?'light':'dark'; saveState(); applyTheme(); toast(WS.theme==='dark'?'已切换深色主题':'已切换浅色主题'); }
+const ICON_AUTO='<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 3a9 9 0 010 18z" fill="currentColor"/></svg>';
+function themeNow(){ if(WS.theme!=="auto") return WS.theme; const h=new Date().getHours(); return (h>=7 && h<19) ? "light" : "dark"; }
+function applyTheme(){ document.documentElement.setAttribute('data-theme', themeNow()); const b=document.getElementById('themeBtn'); if(b){ b.innerHTML = WS.theme==='dark'? ICON_SUN : (WS.theme==='light'? ICON_MOON : ICON_AUTO); b.title = WS.theme==='auto' ? "主题：自动（日浅夜深）" : (WS.theme==='dark'?"主题：深色":"主题：浅色"); } }
+function toggleTheme(){ WS.theme = WS.theme==='dark' ? 'light' : (WS.theme==='light' ? 'auto' : 'dark'); saveState(); applyTheme(); toast(WS.theme==='dark'?'已切换深色主题':WS.theme==='light'?'已切换浅色主题':'已开启自动主题 · 白天浅色 / 夜晚深色'); }
 
 /* 3D 倾斜 */
 function attachTilt(el){
@@ -2099,7 +2117,7 @@ function switchModule(mod){
   document.querySelectorAll(".module").forEach(m=>m.classList.toggle("on", m.id==="mod-"+mod));
   window.scrollTo({top:0,behavior:"smooth"});
   moveInd(mod);
-  if(mod==="overview"){ if(!ovDone) renderOverview(); animateOverview(); }
+  if(mod==="overview"){ renderTodo(); if(!ovDone) renderOverview(); animateOverview(); }
   if(mod==="feishu"){ loadFeishuWebhook(); fetchFeishu(); }
   if(mod==="bill"){ renderBill(); fetchBillCloud(); }
 }
@@ -2311,6 +2329,74 @@ function exportBillCsv(){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=BILL_TABS[WS.bill.tab||"daily"]+"-消耗.csv"; a.click(); URL.revokeObjectURL(a.href);
 }
 
+/* ============================================================
+   今日待办（概览侧栏卡片）+ 侧边导航拖拽排序
+   ============================================================ */
+function renderTodo(){
+  const items=(WS.todo && WS.todo.items) ? WS.todo.items : [];
+  const list=document.getElementById("todoList");
+  const cnt=document.getElementById("todoCnt");
+  const left=items.filter(t=>!t.done).length;
+  if(cnt) cnt.textContent = items.length ? (left ? left+" 项待办" : "全部完成 ✓") : "0";
+  if(!list) return;
+  if(!items.length){ list.innerHTML='<div class="ctx-sub" style="padding:8px 2px">暂无待办，添加一条试试</div>'; return; }
+  list.innerHTML = items.map(t =>
+    '<div class="task '+(t.done?'done':'')+'">' +
+      '<span class="check" data-todo="'+t.id+'" role="checkbox" aria-checked="'+(t.done?'true':'false')+'"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      '<span class="txt">'+esc(t.text)+'</span>' +
+      '<button class="del" data-del="'+t.id+'" aria-label="删除">×</button>' +
+    '</div>'
+  ).join("");
+  list.querySelectorAll('.check').forEach(c=>{ c.onclick=()=>{ const t=items.find(x=>String(x.id)===c.dataset.todo); if(t){ t.done=!t.done; saveState(); renderTodo(); } }; });
+  list.querySelectorAll('.del').forEach(d=>{ d.onclick=()=>{ WS.todo.items=items.filter(x=>String(x.id)!==d.dataset.del); saveState(); renderTodo(); }; });
+}
+function addTodo(){
+  const inp=document.getElementById("todoInput");
+  const text=(inp?inp.value:"").trim();
+  if(!text){ toast("请输入待办内容"); return; }
+  if(!WS.todo) WS.todo={items:[]};
+  WS.todo.items.unshift({ id:Date.now()+Math.random().toString(36).slice(2,6), text, done:false, createdAt:new Date().toISOString() });
+  if(inp) inp.value="";
+  saveState(); renderTodo();
+}
+
+/* 导航拖拽排序 */
+function applyNavOrder(){
+  const sidebar=document.querySelector(".sidebar");
+  if(!sidebar) return;
+  const order=(WS.navOrder||[]).filter(m=>document.querySelector('.nav-item[data-mod="'+m+'"]'));
+  if(!order.length) return;
+  const addEl=document.getElementById("addModule");
+  order.forEach(m=>{
+    const el=document.querySelector('.nav-item[data-mod="'+m+'"]');
+    if(el && addEl) sidebar.insertBefore(el, addEl);
+  });
+}
+function saveNavOrder(){
+  WS.navOrder=[...document.querySelectorAll(".sidebar .nav-item[data-mod]")].map(n=>n.dataset.mod);
+  saveState();
+  const onItem=document.querySelector(".nav-item.on");
+  if(onItem) moveInd(onItem.dataset.mod);
+}
+function bindNavDrag(){
+  const sidebar=document.querySelector(".sidebar");
+  if(!sidebar) return;
+  let dragEl=null;
+  sidebar.querySelectorAll(".nav-item[data-mod]").forEach(item=>{
+    item.draggable=true;
+    item.addEventListener("dragstart", e=>{ dragEl=item; e.dataTransfer.effectAllowed="move"; setTimeout(()=>item.style.opacity=".4",0); });
+    item.addEventListener("dragend", ()=>{ if(dragEl) dragEl.style.opacity=""; saveNavOrder(); dragEl=null; });
+    item.addEventListener("dragover", e=>{
+      e.preventDefault();
+      if(!dragEl || dragEl===item) return;
+      const r=item.getBoundingClientRect();
+      const after = e.clientY > r.top + r.height/2;
+      const ref = after ? item.nextSibling : item;
+      if(ref!==dragEl && ref!==dragEl.nextSibling){ sidebar.insertBefore(dragEl, ref); }
+    });
+  });
+}
+
 /* ripple 点击涟漪 */
 function attachRipple(el){
   el.addEventListener("click", e=>{
@@ -2329,7 +2415,7 @@ function attachRipple(el){
 function doClearAll(){
   if(confirm("确定清空全部工作台数据？此操作不可撤销，建议先点「备份」。")){
     localStorage.removeItem(LS_KEY);
-    WS = { theme:WS.theme, reconcile:{A:null,B:null,results:[],filter:"ALL",view:"detail",mergeMode:false}, bill:{tab:"daily",reports:{daily:null,weekly:null,monthly:null}}, sync:WS.sync };
+    WS = { theme:WS.theme, reconcile:{A:null,B:null,results:[],filter:"ALL",view:"detail",mergeMode:false}, bill:{tab:"daily",reports:{daily:null,weekly:null,monthly:null}}, todo:{items:[]}, navOrder:WS.navOrder||[], sync:WS.sync };
     clearSample();
     document.getElementById("pasteA").value=""; document.getElementById("pasteB").value="";
     toast("已清空全部数据");
@@ -2389,6 +2475,15 @@ async function init(){
   document.getElementById("billRefresh").onclick=fetchBillCloud;
   document.querySelectorAll("#billSeg .vtab").forEach(t=>{ t.onclick=()=>{ WS.bill.tab=t.dataset.billtab; saveState(); renderBill(); }; });
 
+  /* 今日待办 + 导航拖拽 */
+  document.getElementById("todoAdd").onclick=addTodo;
+  const todoInp=document.getElementById("todoInput");
+  if(todoInp) todoInp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); addTodo(); } });
+  renderTodo();
+  applyNavOrder();
+  bindNavDrag();
+  setInterval(()=>{ if(WS.theme==="auto") applyTheme(); }, 60000);
+
   document.getElementById("searchInput").addEventListener("focus", openCmd);
   document.getElementById("searchInput").addEventListener("click", openCmd);
   document.getElementById("cmdInput").addEventListener("input", e=>renderCmd(e.target.value));
@@ -2406,6 +2501,11 @@ async function init(){
 
   document.addEventListener("keydown", e=>{
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==="k"){ e.preventDefault(); openCmd(); }
+    else if((e.metaKey||e.ctrlKey) && /^[1-9]$/.test(e.key)){
+      const order=(WS.navOrder&&WS.navOrder.length?WS.navOrder:["overview","reconcile","ledger","feishu","bill"]);
+      const m=order[+e.key-1];
+      if(m){ e.preventDefault(); switchModule(m); }
+    }
     else if(e.key==="Escape" && document.getElementById("cmdk").classList.contains("on")){ closeCmd(); }
   });
 
