@@ -733,6 +733,74 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 .fresh-st{ max-width:150px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .dev .dot.warn{ background:var(--amber) }
 
+/* ===== AI 助手浮窗 ===== */
+.ai-fab{ position:fixed;right:22px;bottom:56px;z-index:80;width:52px;height:52px;border-radius:16px;border:none;cursor:pointer;
+  background:linear-gradient(140deg,var(--amber),var(--amber-deep));color:#fff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 22px rgba(212,140,59,.42);transition:var(--tr) }
+.ai-fab:hover{ transform:translateY(-3px) scale(1.04);box-shadow:0 12px 28px rgba(212,140,59,.5) }
+.ai-fab:active{ transform:scale(.96) }
+.ai-fab .ai-fab-dot{ position:absolute;top:-3px;right:-3px;width:12px;height:12px;border-radius:50%;background:var(--ok);border:2px solid var(--bg);display:none }
+.ai-fab .ai-fab-dot.show{ display:block }
+.topbtn{ bottom:122px !important }
+.ai-panel{ position:fixed;right:22px;bottom:122px;z-index:85;width:392px;max-width:calc(100vw - 32px);height:min(580px,72vh);
+  display:none;flex-direction:column;overflow:hidden;border-radius:var(--r);
+  background:var(--glass-strong);backdrop-filter:blur(28px) saturate(150%);-webkit-backdrop-filter:blur(28px) saturate(150%);
+  border:1px solid var(--glass-border);box-shadow:var(--sh-3) }
+.ai-panel.on{ display:flex;animation:rise .3s var(--ease) both }
+.ai-head{ display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);flex:none }
+.ai-head .ai-ico{ width:32px;height:32px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(140deg,var(--amber),var(--amber-deep));color:#fff }
+.ai-head b{ font-size:14px;letter-spacing:-.2px }
+.ai-head .ai-sub{ font-size:11px;color:var(--faint);font-weight:500 }
+.ai-head .ai-hacts{ margin-left:auto;display:flex;gap:6px }
+.ai-hbtn{ width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.55);color:var(--ink-2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--tr) }
+.ai-hbtn:hover{ color:var(--amber);border-color:rgba(212,140,59,.4) }
+[data-theme="dark"] .ai-hbtn{ background:rgba(255,255,255,.06) }
+.ai-body{ flex:1;overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:10px }
+.ai-msg{ max-width:86%;padding:10px 13px;border-radius:15px;font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word }
+.ai-msg.user{ align-self:flex-end;background:linear-gradient(140deg,var(--amber),var(--amber-deep));color:#fff;border-bottom-right-radius:5px }
+.ai-msg.bot{ align-self:flex-start;background:rgba(255,255,255,.66);border:1px solid var(--glass-border);color:var(--ink);border-bottom-left-radius:5px }
+[data-theme="dark"] .ai-msg.bot{ background:rgba(255,255,255,.07) }
+.ai-msg.tool{ align-self:flex-start;background:transparent;border:1px dashed var(--line);color:var(--faint);font-size:11.5px;padding:6px 11px }
+.ai-msg.bot b{ color:var(--amber-deep) }
+[data-theme="dark"] .ai-msg.bot b{ color:#E8A33D }
+.ai-typing{ display:inline-flex;gap:4px;padding:4px 2px }
+.ai-typing i{ width:6px;height:6px;border-radius:50%;background:var(--faint);animation:aiDot 1.2s ease-in-out infinite }
+.ai-typing i:nth-child(2){ animation-delay:.15s } .ai-typing i:nth-child(3){ animation-delay:.3s }
+@keyframes aiDot{ 0%,60%,100%{ transform:translateY(0);opacity:.4 } 30%{ transform:translateY(-4px);opacity:1 } }
+.ai-chips{ display:flex;gap:7px;flex-wrap:wrap;padding:0 14px 10px;flex:none }
+.ai-chip{ font-size:11.5px;font-weight:600;color:var(--ink-2);background:rgba(255,255,255,.6);border:1px solid var(--line);
+  border-radius:999px;padding:5px 11px;cursor:pointer;transition:var(--tr) }
+.ai-chip:hover{ color:var(--amber-deep);border-color:rgba(212,140,59,.45);transform:translateY(-1px) }
+[data-theme="dark"] .ai-chip{ background:rgba(255,255,255,.06) }
+.ai-input{ display:flex;gap:8px;padding:11px 14px;border-top:1px solid var(--line);flex:none }
+.ai-input input{ flex:1;border:1px solid var(--line);background:rgba(255,255,255,.7);border-radius:12px;padding:10px 13px;font-size:13px;color:var(--ink);transition:var(--tr) }
+.ai-input input:focus{ outline:none;border-color:var(--amber);box-shadow:0 0 0 4px rgba(212,140,59,.14) }
+[data-theme="dark"] .ai-input input{ background:rgba(255,255,255,.06) }
+.ai-send{ width:42px;height:42px;border-radius:12px;border:none;flex:none;cursor:pointer;
+  background:linear-gradient(140deg,var(--amber),var(--amber-deep));color:#fff;display:flex;align-items:center;justify-content:center;transition:var(--tr) }
+.ai-send:hover{ transform:translateY(-2px) }
+.ai-send:disabled{ opacity:.5;cursor:not-allowed;transform:none }
+/* 设置视图 */
+.ai-setup{ padding:18px 16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto }
+.ai-setup .ai-st{ font-size:12.5px;color:var(--muted);line-height:1.7 }
+.ai-setup .ai-st b{ color:var(--ink) }
+.ai-setup label{ font-size:12px;font-weight:700;color:var(--ink-2) }
+.ai-setup input{ width:100%;border:1px solid var(--line);background:rgba(255,255,255,.7);border-radius:11px;padding:10px 12px;font-size:13px;color:var(--ink);margin-top:5px }
+[data-theme="dark"] .ai-setup input{ background:rgba(255,255,255,.06) }
+.ai-setup input:focus{ outline:none;border-color:var(--amber);box-shadow:0 0 0 4px rgba(212,140,59,.14) }
+.ai-setup-row{ display:flex;gap:8px }
+/* AI 便签卡（概览） */
+.ai-note{ display:flex;align-items:flex-start;gap:9px;padding:10px 2px;border-bottom:1px solid var(--line) }
+.ai-note:last-child{ border-bottom:none }
+.ai-note .an-t{ flex:1;font-size:12.5px;line-height:1.55;min-width:0 }
+.ai-note .an-t b{ display:block;font-size:12.5px;margin-bottom:2px }
+.ai-note .an-t span{ color:var(--muted);font-size:11.5px }
+.ai-note .an-x{ border:none;background:transparent;color:var(--faint);cursor:pointer;font-size:15px;padding:0 2px;border-radius:6px }
+.ai-note .an-x:hover{ color:var(--down) }
+@media (max-width:640px){ .ai-panel{ right:12px;left:12px;width:auto;bottom:110px;height:min(540px,68vh) } .ai-fab{ right:16px;bottom:50px } }
+
 </style>
 </head>
 <body>
@@ -910,6 +978,10 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
           <div class="glass ctx-card reveal" style="--d:440ms">
             <div class="card-title"><h3>数据新鲜度</h3></div>
             <div id="freshList"></div>
+          </div>
+          <div class="glass ctx-card reveal" style="--d:460ms;display:none" id="aiNotesCard">
+            <div class="card-title"><h3>AI 便签</h3><span class="cnt">AI 生成</span></div>
+            <div id="aiNotes"></div>
           </div>
           <div class="glass ctx-card reveal" style="--d:480ms">
             <div class="card-title"><h3>快捷键</h3></div>
@@ -1161,6 +1233,26 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 <button class="topbtn" id="toTop" style="display:none">回到顶部 ↑</button>
 <div class="toast" id="toast"></div>
 
+<!-- AI 助手浮窗 -->
+<button class="ai-fab" id="aiFab" title="AI 助手" aria-label="AI 助手"><span class="ai-fab-dot" id="aiFabDot"></span><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1z" fill="currentColor"/></svg></button>
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-head">
+    <span class="ai-ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+    <div><b>AI 助手</b><div class="ai-sub" id="aiSub">未配置 · 点齿轮填入 API Key</div></div>
+    <div class="ai-hacts">
+      <button class="ai-hbtn" id="aiClearBtn" title="清空对话"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M9 7V5h6v2m-8 0l1 13h8l1-13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="ai-hbtn" id="aiGearBtn" title="设置"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="2"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 00-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 00-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 002 1.2l.4 2.6h4l.4-2.6a7 7 0 002-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></button>
+      <button class="ai-hbtn" id="aiCloseBtn" title="关闭"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+  </div>
+  <div class="ai-body" id="aiBody"></div>
+  <div class="ai-chips" id="aiChips"></div>
+  <div class="ai-input">
+    <input id="aiInput" placeholder="问我：本月花了多少 / 昨天谁消耗最高…" maxlength="500" autocomplete="off">
+    <button class="ai-send" id="aiSend" aria-label="发送"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 12L20 4l-6 8 6 8-16-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* ============================================================
@@ -1181,6 +1273,10 @@ let WS = {
   navOrder:[],
   // 概览自定义布局：隐藏的小组件 {wid:true}
   ovHidden:{},
+  // AI 助手：DeepSeek 配置（仅本机，不上云）+ AI 便签 + 账单点评缓存
+  ai:{ key:"" },
+  aiNotes:[],
+  aiInsight:null,
   // 云端同步配置（仅本机保存，不上云）
   sync:{ url:"https://wvniuyfnuyrebowjlxbi.supabase.co", auto:false, lastSync:null }
 };
@@ -1197,6 +1293,9 @@ function loadState(){
       if(o && o.todo && Array.isArray(o.todo.items)) WS.todo = { items:o.todo.items };
       if(o && Array.isArray(o.navOrder)) WS.navOrder = o.navOrder;
       if(o && o.ovHidden) WS.ovHidden = o.ovHidden;
+      if(o && o.ai) WS.ai = Object.assign(WS.ai, o.ai);
+      if(o && Array.isArray(o.aiNotes)) WS.aiNotes = o.aiNotes;
+      if(o && o.aiInsight) WS.aiInsight = o.aiInsight;
       if(o && o.sync) WS.sync = Object.assign(WS.sync, o.sync);
       if(o && o.theme) WS.theme = o.theme;
       if(!WS.sync.url) WS.sync.url = "https://wvniuyfnuyrebowjlxbi.supabase.co";
@@ -1856,6 +1955,7 @@ const CMD_LIST = [
   {key:"feishu", label:"切换到 飞书", mod:"feishu", icon:"doc"},
   {key:"bill", label:"切换到 消耗账单", mod:"bill", icon:"doc"},
   {key:"billrefresh", label:"刷新消耗账单", act:"billrefresh", icon:"play"},
+  {key:"ai", label:"打开 AI 助手", act:"ai", icon:"plus"},
   {key:"sample", label:"载入对账示例数据", act:"sample", icon:"doc"},
   {key:"run", label:"运行对账", act:"run", icon:"play"},
   {key:"idmerge", label:"仅按 id 合并两张表", act:"idmerge", icon:"play"},
@@ -1906,6 +2006,7 @@ function runCmd(c){
   else if(c.act==="clear"){ doClearAll(); }
   else if(c.act==="theme"){ toggleTheme(); }
   else if(c.act==="billrefresh"){ switchModule("bill"); fetchBillCloud(); }
+  else if(c.act==="ai"){ document.getElementById("aiFab").click(); }
 }
 
 /* ============================================================
@@ -2316,6 +2417,7 @@ function fetchBillCloud(){
       saveState();
       setBillSync("已同步","var(--ok)");
       renderBill(); renderFresh(); updateBellDot();
+      aiBillInsight();
     })
     .catch(()=>{ setBillSync("同步失败（用本地缓存）","var(--down)"); renderBill(); renderFresh(); updateBellDot(); });
 }
@@ -2493,6 +2595,7 @@ function notifyRows(){
   if(!dr) rows.push({dot:"var(--faint)",t:"消耗日报未收到",s:"等待邮箱推送后自动同步",go:"bill"});
   else if(billDailyStale()) rows.push({dot:"var(--down)",t:"消耗日报可能滞后",s:"当前停留在 "+(dr.date||"—")+"，等待最新推送",go:"bill"});
   else rows.push({dot:"var(--ok)",t:"消耗日报已是最新",s:"报表日期 "+(dr.date||"—")+" · 总消耗 "+billMoney(dr.total),go:"bill"});
+  if(WS.aiInsight&&WS.aiInsight.t) rows.push({dot:"var(--violet)",t:"AI 点评 · 昨日消耗",s:WS.aiInsight.t,go:"bill"});
   if(WS.sync&&WS.sync.url) rows.push({dot:"var(--ok)",t:"云端同步已连接",s:WS.sync.lastSync?("最近同步 "+fmtTime(WS.sync.lastSync)):"已配置后端，尚未同步",go:"reconcile"});
   else rows.push({dot:"var(--faint)",t:"云端同步未配置",s:"数据仅存于本浏览器",go:"reconcile"});
   rows.push({dot:WS.ledgerAt?"var(--ok)":"var(--faint)",t:WS.ledgerAt?"记账本数据已读取":"记账本数据未读取",s:WS.ledgerError||"概览图表数据源",go:"ledger"});
@@ -2540,6 +2643,196 @@ function renderOvCustom(){
   p.querySelectorAll("input").forEach(cb=>{ cb.onchange=()=>{ if(!WS.ovHidden) WS.ovHidden={}; WS.ovHidden[cb.dataset.wid]=!cb.checked; saveState(); applyOvHidden(); }; });
 }
 
+/* ============================================================
+   AI 助手（DeepSeek · Function Calling · 账单点评 · AI 便签）
+   Key 仅存本机浏览器 localStorage（WS.ai），不写进源码、不上传云端
+   ============================================================ */
+const AI_BASE = "https://api.deepseek.com/v1";
+const AI_MODEL = "deepseek-chat";
+let AI_CHAT = [];      // 运行时对话（不持久化，刷新清空）
+let AI_BUSY = false;
+
+function aiReady(){ return !!(WS.ai && WS.ai.key); }
+
+/* 记账本原始数据（供 get_ledger_summary / add_ledger_record 使用） */
+async function aiFetchLedger(){
+  const res=await fetch(`${LEDGER_SUPABASE_URL}/rest/v1/${LEDGER_TABLE}?select=*`,{headers:{"apikey":LEDGER_SUPABASE_KEY,"Authorization":"Bearer "+LEDGER_SUPABASE_KEY,"Accept":"application/json"}});
+  if(!res.ok) throw new Error("记账本读取失败 HTTP "+res.status);
+  const rows=await res.json(); return Array.isArray(rows)?rows:[];
+}
+
+/* ---------- 工具箱：AI 可调用的本地能力（注册表结构，加模块时续加即可） ---------- */
+const AI_TOOLS = [
+  { def:{name:"get_overview", description:"获取概览仪表盘：本月支出/已报销/待报销/记账笔数/预算/支出分类/近7日净流", parameters:{type:"object",properties:{}} },
+    run(){ return { kpis:OV.kpis.map(k=>({名称:k.meta,数值:k.to,说明:k.trendTxt})), 预算:OV.budget, 支出分类:OV.donut.map(d=>({分类:d.n,金额:d.v})), 近7日净流:OV.area, 数据说明:OV.fallbackNote||"当月真实数据" }; } },
+  { def:{name:"get_bill", description:"获取磁力金牛消耗账单：日报/周报/月报，含各商务合并消耗与账户明细", parameters:{type:"object",properties:{type:{type:"string",enum:["daily","weekly","monthly"],description:"报表类型，默认 daily"}},required:[]} },
+    run(a){ const t=a.type||"daily"; const r=(WS.bill.reports||{})[t]; if(!r) return {提示:BILL_TABS[t]+"尚未收到"}; return {报表:BILL_TABS[t], 日期:r.date||null, 覆盖周期:r.dateRange||null, 总消耗:r.total, 各商务:r.bizs}; } },
+  { def:{name:"get_ledger_summary", description:"获取记账本数据：指定月份分类汇总与最近流水", parameters:{type:"object",properties:{month:{type:"string",description:"YYYY-MM，默认当前月"}},required:[]} },
+    async run(a){
+      const rows=await aiFetchLedger();
+      const m=a.month||monthStr(new Date());
+      const recs=rows.filter(r=>r.id!=="__budget__" && String(r.date||"").startsWith(m));
+      const byCat={}; let total=0;
+      recs.forEach(r=>{ const c=(EXPENSE_TYPE_META[r.type]||{}).name||r.type||"其他"; byCat[c]=Math.round(((byCat[c]||0)+(Number(r.amount)||0))*100)/100; total+=Number(r.amount)||0; });
+      return {月份:m, 笔数:recs.length, 合计:Math.round(total*100)/100, 分类汇总:byCat, 最近流水:recs.slice(-12).map(r=>({日期:r.date,分类:(EXPENSE_TYPE_META[r.type]||{}).name||r.type,金额:r.amount,备注:r.remark||""}))};
+    } },
+  { def:{name:"list_todos", description:"获取今日待办列表", parameters:{type:"object",properties:{}} },
+    run(){ return (WS.todo.items||[]).map(t=>({内容:t.text, 已完成:!!t.done})); } },
+  { def:{name:"add_todo", description:"添加一条今日待办", parameters:{type:"object",properties:{text:{type:"string",description:"待办内容"}},required:["text"]}, confirm:a=>"确认添加待办：「"+a.text+"」？" },
+    run(a){ WS.todo.items.unshift({id:Date.now()+Math.random().toString(36).slice(2,6), text:a.text, done:false, createdAt:new Date().toISOString()}); saveState(); renderTodo(); updateBellDot(); return {已添加:a.text}; } },
+  { def:{name:"switch_module", description:"切换到指定模块页面", parameters:{type:"object",properties:{mod:{type:"string",enum:["overview","reconcile","ledger","feishu","bill"],description:"模块标识"}},required:["mod"]} },
+    run(a){ switchModule(a.mod); return {已切换到:MOD_NAMES[a.mod]||a.mod}; } },
+  { def:{name:"refresh_bill", description:"立即从云端刷新消耗账单数据", parameters:{type:"object",properties:{}} },
+    run(){ fetchBillCloud(); return {提示:"已开始刷新，稍后可再问最新数据"}; } },
+  { def:{name:"add_ledger_record", description:"记一笔账到记账本。你负责把用户的自然语言解析为金额/分类/备注/日期后再调用", parameters:{type:"object",properties:{amount:{type:"number",description:"金额（元，正数）"},category:{type:"string",enum:["travel","meal","office","traffic","comm","ent","smoke","other"],description:"travel差旅/meal餐饮/office办公/traffic交通/comm通讯/ent招待/smoke烟酒/other其他"},remark:{type:"string",description:"备注"},date:{type:"string",description:"YYYY-MM-DD，默认今天"}},required:["amount","category"]}, confirm:a=>"确认记账："+((EXPENSE_TYPE_META[a.category]||{}).name||a.category)+" ¥"+a.amount+"（"+(a.remark||"无备注")+"，"+(a.date||"今天")+"）？" },
+    async run(a){
+      const rec={ id:"ai_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), type:a.category, amount:Number(a.amount), date:a.date||fmtDateISO(new Date()), remark:a.remark||"", images:[], status:0 };
+      const res=await fetch(`${LEDGER_SUPABASE_URL}/rest/v1/${LEDGER_TABLE}`,{method:"POST",headers:{"apikey":LEDGER_SUPABASE_KEY,"Authorization":"Bearer "+LEDGER_SUPABASE_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify(rec)});
+      if(!res.ok) throw new Error("记账写入失败 HTTP "+res.status);
+      WS.ledgerAt=Date.now(); await fetchLedgerData(); renderFresh();
+      return {已记账:rec};
+    } },
+  { def:{name:"create_custom_card", description:"在概览页创建一张 AI 便签卡（标题+内容），用于沉淀结论/提醒/计划", parameters:{type:"object",properties:{title:{type:"string",description:"便签标题"},content:{type:"string",description:"便签内容"}},required:["title","content"]} },
+    run(a){ if(!WS.aiNotes) WS.aiNotes=[]; WS.aiNotes.unshift({id:Date.now(),title:a.title,content:a.content,at:new Date().toISOString()}); if(WS.aiNotes.length>8) WS.aiNotes.length=8; saveState(); renderAiNotes(); return {已创建便签:a.title}; } }
+];
+
+/* ---------- DeepSeek 调用与对话循环 ---------- */
+async function askAI(messages, useTools){
+  const body={ model:AI_MODEL, messages, temperature:0.3 };
+  if(useTools!==false){ body.tools=AI_TOOLS.map(t=>({type:"function",function:t.def})); body.tool_choice="auto"; }
+  const res=await fetch(AI_BASE+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+WS.ai.key},body:JSON.stringify(body)});
+  if(!res.ok){ const t=await res.text().catch(()=>""); throw new Error("DeepSeek HTTP "+res.status+(t?(" · "+t.slice(0,160)):"")); }
+  const j=await res.json();
+  return j.choices&&j.choices[0]&&j.choices[0].message;
+}
+
+const AI_SYS = { role:"system", content:"你是「个人工作台」的内置 AI 助手，用户是罗炎（磁力金牛广告代理商）。你可以通过工具查询他的记账本、消耗账单（日报/周报/月报）、今日待办，也能替他执行操作。规则：①回答用简洁口语化中文，金额保留两位小数并带 ¥；②需要数据时先调用工具，绝不编造数字；③写操作（记账/加待办）工具执行前会自动向用户确认，若被取消要如实告知；④数据不存在或不确定时直说，并建议他去对应模块查看；⑤回答尽量控制在 150 字以内，重点前置。" };
+
+function aiEscMd(s){ return esc(s).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>"); }
+function aiPushMsg(role, text){
+  const body=document.getElementById("aiBody"); if(!body) return null;
+  const d=document.createElement("div"); d.className="ai-msg "+role;
+  d.innerHTML = role==="tool" ? esc(text) : aiEscMd(text);
+  body.appendChild(d); body.scrollTop=body.scrollHeight; return d;
+}
+function aiPushTyping(){ const body=document.getElementById("aiBody"); if(!body) return null; const d=document.createElement("div"); d.className="ai-msg bot"; d.innerHTML='<span class="ai-typing"><i></i><i></i><i></i></span>'; body.appendChild(d); body.scrollTop=body.scrollHeight; return d; }
+function aiRenderSendState(){ const s=document.getElementById("aiSend"); if(s) s.disabled=AI_BUSY; }
+
+async function aiSend(text){
+  text=(text||"").trim(); if(!text||AI_BUSY) return;
+  if(!aiReady()){ aiShowSetup(); return; }
+  AI_BUSY=true; aiRenderSendState();
+  aiPushMsg("user", text);
+  AI_CHAT.push({role:"user", content:text});
+  const inp=document.getElementById("aiInput"); if(inp) inp.value="";
+  const typing=aiPushTyping();
+  try{
+    const msgs=[AI_SYS, ...AI_CHAT.slice(-12)];
+    let rounds=0, finalText=null;
+    while(rounds++<5){
+      const m=await askAI(msgs);
+      if(m && m.tool_calls && m.tool_calls.length){
+        msgs.push(m);
+        for(const tc of m.tool_calls){
+          const fname=tc.function&&tc.function.name;
+          const tool=AI_TOOLS.find(t=>t.def.name===fname);
+          aiPushMsg("tool", "⚙ 调用工具 · "+fname);
+          let out;
+          try{
+            if(!tool) out={错误:"未知工具"};
+            else{
+              const args=JSON.parse(tc.function.arguments||"{}");
+              if(tool.confirm && !confirm(tool.confirm(args))) out={已取消:"用户取消了该操作"};
+              else out=await tool.run(args);
+            }
+          }catch(e){ out={错误:e.message}; }
+          msgs.push({role:"tool", tool_call_id:tc.id, content:JSON.stringify(out).slice(0,6000)});
+        }
+      }else{ finalText=(m&&m.content)||""; break; }
+    }
+    if(typing) typing.remove();
+    if(finalText===null) finalText="工具调用轮次过多，请换个问法试试。";
+    aiPushMsg("bot", finalText||"（空回复）");
+    AI_CHAT.push({role:"assistant", content:finalText});
+  }catch(e){
+    if(typing) typing.remove();
+    let hint="出错了："+e.message;
+    if(String(e.message).includes("401")) hint+="\nAPI Key 可能无效，点右上角齿轮检查。";
+    if(String(e.message).includes("402")) hint+="\n账户余额不足，请到 platform.deepseek.com 充值。";
+    aiPushMsg("bot", hint);
+  }
+  AI_BUSY=false; aiRenderSendState();
+}
+
+/* ---------- 浮窗 UI：主页 / 设置 / 快捷指令 ---------- */
+const AI_CHIPS=["本月花了多少","昨天哪个商务消耗最高","今天还有什么待办","帮我记一笔：午饭 35 客户请客","把昨天的消耗总结成便签"];
+function aiRenderChips(){ const c=document.getElementById("aiChips"); if(!c) return; c.innerHTML=AI_CHIPS.map(t=>'<button class="ai-chip">'+esc(t)+'</button>').join(""); c.querySelectorAll(".ai-chip").forEach(b=>{ b.onclick=()=>aiSend(b.textContent); }); }
+function aiUpdateSub(){ const s=document.getElementById("aiSub"); if(s) s.textContent=aiReady()?("已连接 DeepSeek · "+AI_MODEL):"未配置 · 点齿轮填入 API Key"; const d=document.getElementById("aiFabDot"); if(d) d.classList.toggle("show", aiReady()); }
+function aiRenderHome(){
+  const body=document.getElementById("aiBody"); if(!body) return;
+  body.innerHTML="";
+  if(!aiReady()){ aiShowSetup(); return; }
+  aiPushMsg("bot","你好，我是工作台 AI 助手 ✦\n我能查你的记账本、消耗日报/周报/月报和待办，也能替你记账、加待办、切页面、生成数据便签。直接开口就行。");
+}
+function aiShowSetup(){
+  const body=document.getElementById("aiBody"); if(!body) return;
+  body.innerHTML=
+   '<div class="ai-setup">'+
+    '<div class="ai-st"><b>接入 DeepSeek</b> 后，AI 就能读懂你的账单、记账本和待办，还能替你操作。<br>Key 只保存在<b>本机浏览器</b>，不会上传云端、不会写进网页源码。</div>'+
+    '<div><label>API Key</label><input id="aiKeyInput" type="password" placeholder="sk-..." value="'+esc((WS.ai&&WS.ai.key)||"")+'"></div>'+
+    '<div class="ai-st">没有 Key？到 <b>platform.deepseek.com</b> 注册 → 充值（10 元够用很久）→ API Keys 创建一个。</div>'+
+    '<div class="ai-setup-row"><button class="btn" id="aiSaveKey" style="flex:1">保存并启用</button><button class="btn soft" id="aiTestKey">测试连接</button></div>'+
+    ((WS.ai&&WS.ai.key)?'<button class="btn ghost" id="aiClearKey">清除已保存的 Key</button>':"")+
+   '</div>';
+  const save=document.getElementById("aiSaveKey");
+  if(save) save.onclick=()=>{
+    const k=(document.getElementById("aiKeyInput").value||"").trim();
+    if(!k){ toast("请填入 API Key"); return; }
+    if(!WS.ai) WS.ai={key:""};
+    WS.ai.key=k; saveState(); aiUpdateSub(); aiRenderHome(); toast("AI 助手已启用 ✦");
+  };
+  const test=document.getElementById("aiTestKey");
+  if(test) test.onclick=async ()=>{
+    const k=(document.getElementById("aiKeyInput").value||"").trim();
+    if(!k){ toast("请先填入 API Key"); return; }
+    test.disabled=true; test.textContent="测试中…";
+    try{
+      const res=await fetch(AI_BASE+"/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+k},body:JSON.stringify({model:AI_MODEL,messages:[{role:"user",content:"ping"}],max_tokens:4})});
+      if(res.ok) toast("连接正常 ✔ 可以保存启用"); else toast("连接失败 HTTP "+res.status+"（401=Key无效，402=欠费）");
+    }catch(e){ toast("网络失败："+e.message); }
+    test.disabled=false; test.textContent="测试连接";
+  };
+  const clr=document.getElementById("aiClearKey");
+  if(clr) clr.onclick=()=>{ if(confirm("确定清除已保存的 API Key？")){ WS.ai.key=""; saveState(); aiUpdateSub(); aiShowSetup(); toast("已清除 Key"); } };
+}
+
+/* ---------- AI 便签（概览卡片） ---------- */
+function renderAiNotes(){
+  const card=document.getElementById("aiNotesCard"), list=document.getElementById("aiNotes");
+  if(!card||!list) return;
+  const arr=WS.aiNotes||[];
+  card.style.display=arr.length?"":"none";
+  list.innerHTML=arr.map(n=>'<div class="ai-note"><div class="an-t"><b>'+esc(n.title)+'</b><span>'+esc(n.content)+'</span></div><button class="an-x" data-x="'+n.id+'" aria-label="删除">×</button></div>').join("");
+  list.querySelectorAll(".an-x").forEach(x=>{ x.onclick=()=>{ WS.aiNotes=(WS.aiNotes||[]).filter(n=>String(n.id)!==x.dataset.x); saveState(); renderAiNotes(); }; });
+}
+
+/* ---------- 账单 AI 点评（日报同步后自动生成一句话，注入通知中心） ---------- */
+async function aiBillInsight(){
+  if(!aiReady()) return;
+  const r=WS.bill&&WS.bill.reports&&WS.bill.reports.daily;
+  if(!r||!r.bizs) return;
+  const cacheKey=(r.date||"")+"|"+r.total;
+  if(WS.aiInsight&&WS.aiInsight.k===cacheKey) return;
+  try{
+    const m=await askAI([
+      {role:"system",content:"你是广告投流分析师。根据给出的消耗日报（磁力金牛），用一句不超过 60 字的中文点评：消耗最高的商务、大致占比、如有明显异常可指出。直接输出点评文本，不要任何前缀。"},
+      {role:"user",content:JSON.stringify({日期:r.date,总消耗:r.total,各商务:(r.bizs||[]).map(b=>({商务:b.biz,消耗:b.spent}))})}
+    ], false);
+    const txt=(m&&m.content||"").trim();
+    if(txt){ WS.aiInsight={k:cacheKey,t:txt,at:Date.now()}; saveState(); }
+  }catch(e){ console.warn("[ai] insight failed:",e.message); }
+}
+
 /* ripple 点击涟漪 */
 function attachRipple(el){
   el.addEventListener("click", e=>{
@@ -2558,7 +2851,7 @@ function attachRipple(el){
 function doClearAll(){
   if(confirm("确定清空全部工作台数据？此操作不可撤销，建议先点「备份」。")){
     localStorage.removeItem(LS_KEY);
-    WS = { theme:WS.theme, reconcile:{A:null,B:null,results:[],filter:"ALL",view:"detail",mergeMode:false}, bill:{tab:"daily",reports:{daily:null,weekly:null,monthly:null}}, todo:{items:[]}, navOrder:WS.navOrder||[], sync:WS.sync };
+    WS = { theme:WS.theme, reconcile:{A:null,B:null,results:[],filter:"ALL",view:"detail",mergeMode:false}, bill:{tab:"daily",reports:{daily:null,weekly:null,monthly:null}}, todo:{items:[]}, navOrder:WS.navOrder||[], ovHidden:{}, ai:WS.ai, aiNotes:[], aiInsight:null, sync:WS.sync };
     clearSample();
     document.getElementById("pasteA").value=""; document.getElementById("pasteB").value="";
     toast("已清空全部数据");
@@ -2626,6 +2919,15 @@ async function init(){
   applyNavOrder();
   bindNavDrag();
   renderOvGreet(); renderFresh(); renderKbdRows(); renderOvCustom(); applyOvHidden(); updateBellDot();
+  /* AI 助手绑定 */
+  let aiOpened=false;
+  document.getElementById("aiFab").onclick=()=>{ const p=document.getElementById("aiPanel"); const on=!p.classList.contains("on"); p.classList.toggle("on",on); if(on&&!aiOpened){ aiOpened=true; aiRenderHome(); aiRenderChips(); } if(on){ const i=document.getElementById("aiInput"); if(i&&aiReady()) setTimeout(()=>i.focus(),120); } };
+  document.getElementById("aiCloseBtn").onclick=()=>document.getElementById("aiPanel").classList.remove("on");
+  document.getElementById("aiGearBtn").onclick=aiShowSetup;
+  document.getElementById("aiClearBtn").onclick=()=>{ AI_CHAT=[]; aiRenderHome(); toast("对话已清空"); };
+  document.getElementById("aiSend").onclick=()=>aiSend(document.getElementById("aiInput").value);
+  document.getElementById("aiInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); aiSend(e.target.value); } });
+  aiUpdateSub(); renderAiNotes();
   const ocBtn=document.getElementById("ovCustomBtn");
   if(ocBtn) ocBtn.onclick=()=>{ const p=document.getElementById("ovCustom"); if(p) p.classList.toggle("on"); };
   document.addEventListener("click", e=>{
@@ -2662,6 +2964,7 @@ async function init(){
       if(document.getElementById("cmdk").classList.contains("on")) closeCmd();
       toggleNotify(false);
       const oc=document.getElementById("ovCustom"); if(oc) oc.classList.remove("on");
+      const ap=document.getElementById("aiPanel"); if(ap) ap.classList.remove("on");
     }
   });
 
