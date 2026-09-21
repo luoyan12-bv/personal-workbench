@@ -695,6 +695,44 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 /* 焦点可见性：键盘导航更清晰 */
 :focus-visible{ outline:3px solid rgba(212,140,59,.5);outline-offset:2px;border-radius:12px }
 
+/* ===== 通知中心（顶栏铃铛下拉） ===== */
+.notify-wrap{ position:relative }
+.notify-panel{ position:absolute;right:0;top:52px;width:330px;max-width:88vw;z-index:70;padding:8px;display:none;
+  background:var(--glass-strong);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);
+  border:1px solid var(--glass-border);box-shadow:var(--sh-3);border-radius:var(--r-sm) }
+.notify-panel.on{ display:block;animation:rise .28s var(--ease) both }
+.notify-head{ display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px;font-size:13px;font-weight:700 }
+.notify-head span{ font-size:11px;color:var(--faint);font-weight:500 }
+.nrow{ display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:12px;cursor:pointer;transition:var(--tr) }
+.nrow:hover{ background:rgba(212,140,59,.08) }
+[data-theme="dark"] .nrow:hover{ background:rgba(232,163,61,.12) }
+.nrow .nd{ width:8px;height:8px;border-radius:50%;margin-top:7px;flex:none }
+.nrow .nt{ flex:1;font-size:13px;font-weight:600;line-height:1.45;min-width:0 }
+.nrow .ns{ display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:2px }
+.bell-dot{ display:none }
+.bell-dot.show{ display:block }
+@media (max-width:640px){ .notify-panel{ position:fixed;left:12px;right:12px;top:64px;width:auto } }
+
+/* ===== 概览自定义布局面板 ===== */
+.ov-head{ position:relative }
+.ov-head .date{ padding-right:118px }
+@media (max-width:640px){ .ov-head .date{ padding-right:0 } .ov-custom-btn{ position:static;margin-top:10px } }
+.ov-custom-btn{ position:absolute;right:0;top:4px }
+.ov-custom{ position:absolute;right:0;top:46px;z-index:70;width:232px;padding:10px;display:none;border-radius:var(--r-sm);
+  background:var(--glass-strong);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);
+  border:1px solid var(--glass-border);box-shadow:var(--sh-3) }
+.ov-custom.on{ display:block;animation:rise .28s var(--ease) both }
+.ov-custom .oc-title{ font-size:11px;color:var(--faint);font-weight:700;padding:4px 9px 8px;letter-spacing:.08em }
+.ov-custom label{ display:flex;align-items:center;gap:9px;padding:8px 9px;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;transition:var(--tr) }
+.ov-custom label:hover{ background:rgba(212,140,59,.08) }
+[data-theme="dark"] .ov-custom label:hover{ background:rgba(232,163,61,.12) }
+.ov-custom input{ accent-color:var(--amber);width:15px;height:15px;flex:none }
+.ov-hidden{ display:none !important }
+
+/* 数据新鲜度行：状态点配色 */
+.fresh-st{ max-width:150px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.dev .dot.warn{ background:var(--amber) }
+
 </style>
 </head>
 <body>
@@ -721,7 +759,10 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
     </div>
     <button class="top-sync" id="topSync" title="云端同步状态 · 点击前往同步"><i></i><span id="topSyncTxt">本地</span></button>
     <div class="top-actions">
-      <button class="iconbtn" id="bellBtn" title="通知" aria-label="通知"><span class="bell-dot"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 1112 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 19a2 2 0 004 0" stroke="currentColor" stroke-width="2"/></svg></button>
+      <div class="notify-wrap">
+        <button class="iconbtn" id="bellBtn" title="通知" aria-label="通知"><span class="bell-dot"></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 9a6 6 0 1112 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 19a2 2 0 004 0" stroke="currentColor" stroke-width="2"/></svg></button>
+        <div class="notify-panel" id="notifyPanel"></div>
+      </div>
       <button class="ghostbtn" id="expJson" title="导出备份"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>备份</button>
       <button class="ghostbtn" id="impJson" title="导入备份"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0L8 7m4-4l4 4M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>导入</button>
       <input type="file" id="impFile" accept="application/json,.json" style="display:none">
@@ -777,16 +818,18 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
 
     <!-- ============ 模块：概览（仪表盘） ============ -->
     <section class="module on" id="mod-overview">
-      <div class="page-head reveal">
+      <div class="page-head reveal ov-head">
         <h2>概览</h2>
-        <div class="date">你的财务全景 · 数据来自记账本与对账</div>
+        <div class="date" id="ovGreet">你的财务全景 · 数据来自记账本与对账</div>
+        <button class="ghostbtn ov-custom-btn" id="ovCustomBtn" title="自定义概览布局"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 8h10M18 8h2M4 16h4M12 16h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="8" r="2.5" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="16" r="2.5" stroke="currentColor" stroke-width="2"/></svg>自定义布局</button>
+        <div class="ov-custom" id="ovCustom"></div>
       </div>
 
       <div class="ov-layout">
         <div class="ov-main">
-          <div class="ov-kpis" id="ovKpis"></div>
+          <div class="ov-kpis" id="ovKpis" data-wid="kpis"></div>
 
-          <div class="ov-grid">
+          <div class="ov-grid" data-wid="charts">
             <div class="glass reveal tilt" data-d="80" style="padding:18px 20px">
               <div class="card-title"><h3>近 7 日净流</h3><span class="cnt" id="areaMeta">—</span></div>
               <div class="chart-wrap">
@@ -804,7 +847,7 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
             </div>
           </div>
 
-          <div class="ov-grid2">
+          <div class="ov-grid2" data-wid="grid2">
             <div class="glass reveal tilt" data-d="200" style="padding:18px 20px">
               <div class="card-title"><h3>本月预算</h3><span class="cnt" id="budgetTxt">—</span></div>
               <div class="budget-row">
@@ -825,7 +868,7 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
             </div>
           </div>
 
-          <div class="ov-actions reveal" data-d="320">
+          <div class="ov-actions reveal" data-d="320" data-wid="actions">
             <button class="act" data-go="reconcile">
               <span class="aic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>
               <div><b>去对账</b><span>双表比对 / id 合并</span></div>
@@ -846,7 +889,7 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
         </div>
 
         <!-- 情境面板：同步态 / 本月速览 / 多端 / 快捷键 -->
-        <aside class="ov-side">
+        <aside class="ov-side" data-wid="side">
           <div class="glass ctx-card reveal" style="--d:360ms">
             <div class="card-title"><h3>云端同步</h3></div>
             <div class="ctx-pulse" id="ctxPulse"><i></i><span id="ctxSync">未连接</span></div>
@@ -865,22 +908,13 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
             <div class="task-add"><input id="todoInput" placeholder="添加待办，回车保存" maxlength="60"><button class="addbtn" id="todoAdd" aria-label="添加待办">+</button></div>
           </div>
           <div class="glass ctx-card reveal" style="--d:440ms">
-            <div class="card-title"><h3>多端设备</h3></div>
-            <div class="dev"><span class="dot"></span><span class="nm">本机 · 工作台</span><span class="st">在线</span></div>
-            <div class="dev"><span class="dot"></span><span class="nm">手机 · 罗炎</span><span class="st">同步中</span></div>
-            <div class="dev"><span class="dot idle"></span><span class="nm">平板 · 备用</span><span class="st">闲置</span></div>
+            <div class="card-title"><h3>数据新鲜度</h3></div>
+            <div id="freshList"></div>
           </div>
           <div class="glass ctx-card reveal" style="--d:480ms">
             <div class="card-title"><h3>快捷键</h3></div>
             <div class="ctx-sub">键盘流，操作更高效</div>
-            <div class="kbd-row">
-              <span class="k">⌘K</span><span class="k">命令面板</span>
-              <span class="k">⌘1</span><span class="k">概览</span>
-              <span class="k">⌘2</span><span class="k">对账</span>
-              <span class="k">⌘3</span><span class="k">记账本</span>
-              <span class="k">⌘4</span><span class="k">飞书</span>
-              <span class="k">⌘5</span><span class="k">消耗账单</span>
-            </div>
+            <div class="kbd-row" id="kbdRows"></div>
           </div>
         </aside>
       </div>
@@ -1145,6 +1179,8 @@ let WS = {
   todo:{ items:[] },
   // 侧边导航自定义排序（模块 key 数组）
   navOrder:[],
+  // 概览自定义布局：隐藏的小组件 {wid:true}
+  ovHidden:{},
   // 云端同步配置（仅本机保存，不上云）
   sync:{ url:"https://wvniuyfnuyrebowjlxbi.supabase.co", auto:false, lastSync:null }
 };
@@ -1160,6 +1196,7 @@ function loadState(){
       if(!WS.bill.tab) WS.bill.tab = "daily";
       if(o && o.todo && Array.isArray(o.todo.items)) WS.todo = { items:o.todo.items };
       if(o && Array.isArray(o.navOrder)) WS.navOrder = o.navOrder;
+      if(o && o.ovHidden) WS.ovHidden = o.ovHidden;
       if(o && o.sync) WS.sync = Object.assign(WS.sync, o.sync);
       if(o && o.theme) WS.theme = o.theme;
       if(!WS.sync.url) WS.sync.url = "https://wvniuyfnuyrebowjlxbi.supabase.co";
@@ -1815,7 +1852,10 @@ function restoreReconcile(){
 const CMD_LIST = [
   {key:"overview", label:"切换到 概览", mod:"overview", icon:"grid"},
   {key:"reconcile", label:"切换到 对账", mod:"reconcile", icon:"list"},
+  {key:"ledger", label:"切换到 记账本", mod:"ledger", icon:"doc"},
+  {key:"feishu", label:"切换到 飞书", mod:"feishu", icon:"doc"},
   {key:"bill", label:"切换到 消耗账单", mod:"bill", icon:"doc"},
+  {key:"billrefresh", label:"刷新消耗账单", act:"billrefresh", icon:"play"},
   {key:"sample", label:"载入对账示例数据", act:"sample", icon:"doc"},
   {key:"run", label:"运行对账", act:"run", icon:"play"},
   {key:"idmerge", label:"仅按 id 合并两张表", act:"idmerge", icon:"play"},
@@ -1865,6 +1905,7 @@ function runCmd(c){
   else if(c.act==="syncpull"){ switchModule("reconcile"); syncPull(false); }
   else if(c.act==="clear"){ doClearAll(); }
   else if(c.act==="theme"){ toggleTheme(); }
+  else if(c.act==="billrefresh"){ switchModule("bill"); fetchBillCloud(); }
 }
 
 /* ============================================================
@@ -1908,10 +1949,12 @@ async function fetchLedgerData(){
     if(!Array.isArray(rows)) throw new Error('返回格式异常');
     processLedgerRows(rows);
     WS.ledgerLoaded=true; WS.ledgerError=null;
+    WS.ledgerAt=Date.now(); renderFresh();
     return true;
   }catch(e){
     console.error('[ledger]',e);
     WS.ledgerLoaded=false; WS.ledgerError=e.message;
+    renderFresh();
     // 失败后保留演示数据，避免空白
     OV.kpis.forEach((k,i)=>{
       k.to=[9438.20,6280.00,3158.20,47][i];
@@ -1994,12 +2037,12 @@ function processLedgerRows(rows){
   OV.budget={total:budgetTotal||12000,used:monthDone+monthPending}; // 已用 = 已报销 + 待报销（未报销一并计入预算占用）
   OV.flow=flow.length?flow:[{c:"提示",t:`${mLabel}暂无记账记录`,a:0,ic:"#6b7280"}];
 }
-function fmtMoney(v,dec){ return Number(v).toLocaleString('zh-CN',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function fmtMoneyD(v,dec){ return Number(v).toLocaleString('zh-CN',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
 function countUp(el){
   const to=parseFloat(el.dataset.to), pre=el.dataset.pre||"", dec=el.dataset.dec?+el.dataset.dec:2;
-  if(reduceMotion||!isFinite(to)){ el.textContent=pre+fmtMoney(to,dec); return; }
+  if(reduceMotion||!isFinite(to)){ el.textContent=pre+fmtMoneyD(to,dec); return; }
   const dur=1100, t0=performance.now();
-  (function step(t){ let p=Math.min(1,(t-t0)/dur); p=1-Math.pow(1-p,3); el.textContent=pre+fmtMoney(to*p,dec); if(p<1) requestAnimationFrame(step); })(performance.now());
+  (function step(t){ let p=Math.min(1,(t-t0)/dur); p=1-Math.pow(1-p,3); el.textContent=pre+fmtMoneyD(to*p,dec); if(p<1) requestAnimationFrame(step); })(performance.now());
 }
 function animateOverview(){ document.querySelectorAll('#mod-overview .kpi-val').forEach(countUp); }
 
@@ -2014,10 +2057,10 @@ function drawArea(){
     <path d="${line}" fill="none" stroke="#D48C3B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
     ${pts.map(p=>`<circle class="dot-pt" cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#fff" stroke="#D48C3B" stroke-width="2.5"/>`).join('')}`;
   const tip=document.getElementById('areaTip');
-  svg.onmousemove=e=>{ const rect=svg.getBoundingClientRect(); const rx=(e.clientX-rect.left)/rect.width*W; let best=0,bd=1e9; pts.forEach((p,i)=>{const dd=Math.abs(p.x-rx);if(dd<bd){bd=dd;best=i;}}); const p=pts[best]; tip.style.opacity=1; tip.style.left=(p.x/W*rect.width)+'px'; tip.style.top=(p.y/H*rect.height)+'px'; tip.innerHTML=`${p.d} · 净流 <b>${p.v>=0?'+':'-'}¥${fmtMoney(Math.abs(p.v),0)}</b>`; };
+  svg.onmousemove=e=>{ const rect=svg.getBoundingClientRect(); const rx=(e.clientX-rect.left)/rect.width*W; let best=0,bd=1e9; pts.forEach((p,i)=>{const dd=Math.abs(p.x-rx);if(dd<bd){bd=dd;best=i;}}); const p=pts[best]; tip.style.opacity=1; tip.style.left=(p.x/W*rect.width)+'px'; tip.style.top=(p.y/H*rect.height)+'px'; tip.innerHTML=`${p.d} · 净流 <b>${p.v>=0?'+':'-'}¥${fmtMoneyD(Math.abs(p.v),0)}</b>`; };
   svg.onmouseleave=()=>{ tip.style.opacity=0; };
   const sum=data.reduce((a,b)=>a+b.v,0);
-  document.getElementById('areaMeta').textContent='7 日合计 '+(sum>=0?'+':'-')+'¥'+fmtMoney(Math.abs(sum),0);
+  document.getElementById('areaMeta').textContent='7 日合计 '+(sum>=0?'+':'-')+'¥'+fmtMoneyD(Math.abs(sum),0);
 }
 function drawDonut(){
   const svg=document.getElementById('donutChart'); if(!svg) return;
@@ -2026,20 +2069,20 @@ function drawDonut(){
   OV.donut.forEach((s,i)=>{ const frac=s.v/total,len=frac*C,off=C-acc; segs+=`<circle class="seg" data-i="${i}" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.c}" stroke-width="${sw}" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`; acc+=len; });
   svg.innerHTML=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(128,128,128,.18)" stroke-width="${sw}"/>`+segs;
   const lab=document.getElementById('donutLab'), leg=document.getElementById('donutLegend');
-  lab.innerHTML=`<b>¥${fmtMoney(total,0)}</b><span>总支出</span>`;
-  leg.innerHTML=OV.donut.map(s=>`<span><i style="background:${s.c}"></i>${s.n} ¥${fmtMoney(s.v,0)}</span>`).join('');
+  lab.innerHTML=`<b>¥${fmtMoneyD(total,0)}</b><span>总支出</span>`;
+  leg.innerHTML=OV.donut.map(s=>`<span><i style="background:${s.c}"></i>${s.n} ¥${fmtMoneyD(s.v,0)}</span>`).join('');
   svg.querySelectorAll('.seg').forEach(seg=>{
-    seg.addEventListener('mouseenter',()=>{ const s=OV.donut[+seg.dataset.i]; lab.innerHTML=`<b>¥${fmtMoney(s.v,0)}</b><span>${s.n} · ${((s.v/total)*100).toFixed(1)}%</span>`; svg.querySelectorAll('.seg').forEach(x=>x.style.opacity=x===seg?1:.35); });
-    seg.addEventListener('mouseleave',()=>{ lab.innerHTML=`<b>¥${fmtMoney(total,0)}</b><span>总支出</span>`; svg.querySelectorAll('.seg').forEach(x=>x.style.opacity=1); });
+    seg.addEventListener('mouseenter',()=>{ const s=OV.donut[+seg.dataset.i]; lab.innerHTML=`<b>¥${fmtMoneyD(s.v,0)}</b><span>${s.n} · ${((s.v/total)*100).toFixed(1)}%</span>`; svg.querySelectorAll('.seg').forEach(x=>x.style.opacity=x===seg?1:.35); });
+    seg.addEventListener('mouseleave',()=>{ lab.innerHTML=`<b>¥${fmtMoneyD(total,0)}</b><span>总支出</span>`; svg.querySelectorAll('.seg').forEach(x=>x.style.opacity=1); });
   });
 }
 function drawBudget(){
   const {total,used}=OV.budget, pct=Math.min(100,used/total*100), C=2*Math.PI*52;
   document.getElementById('budgetSvg').innerHTML=`<defs><linearGradient id="budGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D48C3B"/><stop offset="1" stop-color="#9B7BE8"/></linearGradient></defs><circle class="track" cx="60" cy="60" r="52"/><circle class="prog" cx="60" cy="60" r="52" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${C.toFixed(1)}"/>`;
   document.getElementById('budgetPct').textContent=Math.round(pct)+'%';
-  document.getElementById('budgetUsed').textContent='¥'+fmtMoney(used,0);
-  document.getElementById('budgetTotal').textContent='¥'+fmtMoney(total,0);
-  document.getElementById('budgetLeft').textContent='剩余 ¥'+fmtMoney(total-used,0);
+  document.getElementById('budgetUsed').textContent='¥'+fmtMoneyD(used,0);
+  document.getElementById('budgetTotal').textContent='¥'+fmtMoneyD(total,0);
+  document.getElementById('budgetLeft').textContent='剩余 ¥'+fmtMoneyD(total-used,0);
   const prog=document.querySelector('#budgetSvg .prog');
   requestAnimationFrame(()=>{ prog.style.strokeDashoffset=(C*(1-pct/100)).toFixed(1); });
   document.getElementById('budgetBar').style.width=pct.toFixed(1)+'%';
@@ -2047,7 +2090,7 @@ function drawBudget(){
 }
 function drawFlow(){
   const el=document.getElementById('ovFlow'); if(!el) return;
-  el.innerHTML=OV.flow.map(f=>`<div class="flow-item"><span class="fdot" style="background:${f.ic}"></span><div class="fmain"><div class="fc">${f.c}</div><div class="ft">${f.t}</div></div><div class="famt ${f.a>=0?'pos':'neg'}">${f.a>=0?'+':'-'}¥${fmtMoney(Math.abs(f.a),0)}</div></div>`).join('');
+  el.innerHTML=OV.flow.map(f=>`<div class="flow-item"><span class="fdot" style="background:${f.ic}"></span><div class="fmain"><div class="fc">${f.c}</div><div class="ft">${f.t}</div></div><div class="famt ${f.a>=0?'pos':'neg'}">${f.a>=0?'+':'-'}¥${fmtMoneyD(Math.abs(f.a),0)}</div></div>`).join('');
 }
 function renderOverview(){
   if(ovDone) return;
@@ -2067,7 +2110,7 @@ function renderOverview(){
 /* 情境面板：本月支出速览（来自真实记账本数据） */
 function renderContext(){
   const spent=OV.kpis[0];
-  const netEl=document.getElementById("ctxNet"); if(netEl) netEl.textContent=(spent.pre||"")+fmtMoney(spent.to, spent.dec);
+  const netEl=document.getElementById("ctxNet"); if(netEl) netEl.textContent=(spent.pre||"")+fmtMoneyD(spent.to, spent.dec);
   const trEl=document.getElementById("ctxNetTrend"); if(trEl) trEl.textContent=(spent.trend==="up"?"▲":"▼")+" "+spent.trendTxt;
   const dEl=document.getElementById("ctxNetDelta"); if(dEl) dEl.textContent=spent.trendTxt;
   const srcEl=document.getElementById("ctxDataSource");
@@ -2088,6 +2131,7 @@ function updateSyncStatus(){
   const cst=document.getElementById("ctxSyncTime"); if(cst) cst.textContent=synced?("后端："+WS.sync.url):"数据仅存于本浏览器 · 点此连接多设备";
   const sb=document.getElementById("sbSync"); if(sb) sb.textContent=synced?"已连接云端":"未连接云端";
   const dot=document.getElementById("sbSyncDot"); if(dot) dot.style.background=synced?"var(--ok)":"var(--muted)";
+  renderFresh();
 }
 
 /* 主题切换：浅色 / 深色 / 自动（日浅夜深，白天 7:00-19:00） */
@@ -2129,7 +2173,6 @@ const FS_BASE_URL = "https://mmmxlwlkj.feishu.cn/base/XGDZbuRs0a31oCsZjCgcNAUgnD
 let FS_DATA = null;
 let AGENT_ENC_PASS = ""; // 运行时加密口令（不持久化，仅本次会话，用于本地加密机器人配置）
 
-function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
 function fmtFsDate(t){ if(!t) return "—"; const s=String(t).replace("T"," ").replace(/\.\d+/,""); return s.slice(0,16); }
 function fmtFsTime(t){ if(!t) return ""; const s=String(t).replace("T"," ").replace(/\.\d+/,""); return s.slice(0,16); }
 function setFsStatus(text,color){ const e=document.getElementById("fsStatus"); if(e) e.textContent=text; const d=document.getElementById("fsDot"); if(d) d.style.background=color||"var(--faint)"; }
@@ -2146,6 +2189,7 @@ async function fetchFeishu(){
     FS_DATA=row.data;
     renderFsBody(row.data.records);
     setFsStatus("已同步 · "+fmtFsTime(row.data.updatedAt||row.updated_at),"var(--ok)");
+    WS.feishuAt=row.data.updatedAt||row.updated_at||Date.now(); renderFresh();
   }catch(e){ setFsStatus("读取失败","var(--down)"); }
 }
 
@@ -2268,11 +2312,12 @@ function fetchBillCloud(){
     .then(rows=>{
       const d=(rows&&rows[0]&&rows[0].data)?rows[0].data:{};
       WS.bill.reports={ daily:d.daily||null, weekly:d.weekly||null, monthly:d.monthly||null };
+      WS.billAt=Date.now();
       saveState();
       setBillSync("已同步","var(--ok)");
-      renderBill();
+      renderBill(); renderFresh(); updateBellDot();
     })
-    .catch(()=>{ setBillSync("同步失败（用本地缓存）","var(--down)"); renderBill(); });
+    .catch(()=>{ setBillSync("同步失败（用本地缓存）","var(--down)"); renderBill(); renderFresh(); updateBellDot(); });
 }
 
 function renderBill(){
@@ -2349,6 +2394,7 @@ function renderTodo(){
   ).join("");
   list.querySelectorAll('.check').forEach(c=>{ c.onclick=()=>{ const t=items.find(x=>String(x.id)===c.dataset.todo); if(t){ t.done=!t.done; saveState(); renderTodo(); } }; });
   list.querySelectorAll('.del').forEach(d=>{ d.onclick=()=>{ WS.todo.items=items.filter(x=>String(x.id)!==d.dataset.del); saveState(); renderTodo(); }; });
+  updateBellDot();
 }
 function addTodo(){
   const inp=document.getElementById("todoInput");
@@ -2357,7 +2403,7 @@ function addTodo(){
   if(!WS.todo) WS.todo={items:[]};
   WS.todo.items.unshift({ id:Date.now()+Math.random().toString(36).slice(2,6), text, done:false, createdAt:new Date().toISOString() });
   if(inp) inp.value="";
-  saveState(); renderTodo();
+  saveState(); renderTodo(); updateBellDot();
 }
 
 /* 导航拖拽排序 */
@@ -2377,6 +2423,7 @@ function saveNavOrder(){
   saveState();
   const onItem=document.querySelector(".nav-item.on");
   if(onItem) moveInd(onItem.dataset.mod);
+  renderKbdRows();
 }
 function bindNavDrag(){
   const sidebar=document.querySelector(".sidebar");
@@ -2395,6 +2442,102 @@ function bindNavDrag(){
       if(ref!==dragEl && ref!==dragEl.nextSibling){ sidebar.insertBefore(dragEl, ref); }
     });
   });
+}
+
+/* ============================================================
+   问候语 / 数据新鲜度 / 通知中心 / 动态快捷键 / 自定义布局
+   ============================================================ */
+const MOD_NAMES = { overview:"概览", reconcile:"对账", ledger:"记账本", feishu:"飞书", bill:"消耗账单" };
+
+/* 问候语：按时段 + 真实日期 */
+function renderOvGreet(){
+  const el=document.getElementById("ovGreet"); if(!el) return;
+  const d=new Date(); const h=d.getHours();
+  const hi = h<5 ? "夜深了" : h<11 ? "早上好" : h<14 ? "中午好" : h<18 ? "下午好" : "晚上好";
+  el.textContent = hi+"，罗炎 · 今天是 "+(d.getMonth()+1)+"月"+d.getDate()+"日 "+fmtWeekDay(d)+" · 数据来自记账本与对账";
+}
+
+/* 数据新鲜度：记账本 / 消耗账单 / 飞书台账 / 云端同步 各自最近更新时间 */
+function fmtHM(ts){ if(!ts) return "—"; try{ const d=new Date(ts); const p=n=>String(n).padStart(2,"0"); return (d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); }catch(e){ return "—"; } }
+function renderFresh(){
+  const el=document.getElementById("freshList"); if(!el) return;
+  const rows=[];
+  if(WS.ledgerAt) rows.push({dot:"",nm:"记账本",st:fmtHM(WS.ledgerAt)});
+  else if(WS.ledgerError) rows.push({dot:"warn",nm:"记账本",st:"读取失败"});
+  else rows.push({dot:"idle",nm:"记账本",st:"未读取"});
+  const br=(WS.bill&&WS.bill.reports)||{};
+  const bp=[];
+  if(br.daily) bp.push("日报 "+(br.daily.date||"—"));
+  if(br.weekly) bp.push("周报 "+(br.weekly.dateRange||br.weekly.date||"—"));
+  if(br.monthly) bp.push("月报 "+(br.monthly.dateRange||br.monthly.date||"—"));
+  rows.push({dot:bp.length?"":"idle", nm:"消耗账单", st:bp.length?bp.join(" · "):"未收到"});
+  rows.push({dot:WS.feishuAt?"":"idle", nm:"飞书台账", st:WS.feishuAt?fmtHM(WS.feishuAt):"未读取"});
+  rows.push({dot:(WS.sync&&WS.sync.lastSync)?"":((WS.sync&&WS.sync.url)?"warn":"idle"), nm:"云端同步", st:(WS.sync&&WS.sync.lastSync)?fmtHM(WS.sync.lastSync):((WS.sync&&WS.sync.url)?"已配置未同步":"未配置")});
+  el.innerHTML=rows.map(r=>'<div class="dev"><span class="dot '+(r.dot||"")+'"></span><span class="nm">'+r.nm+'</span><span class="st fresh-st" title="'+esc(r.st)+'">'+esc(r.st)+'</span></div>').join("");
+}
+
+/* 通知中心：待办 / 账单新鲜度 / 云端 / 记账本，铃铛红点按真实状态显示 */
+function billDailyStale(){
+  const r=(WS.bill&&WS.bill.reports&&WS.bill.reports.daily)||null;
+  if(!r||!r.date) return false;
+  const t=new Date(r.date); if(isNaN(t)) return false;
+  const y=new Date(); y.setDate(y.getDate()-1);
+  return fmtDateISO(t)!==fmtDateISO(y);
+}
+function notifyRows(){
+  const rows=[];
+  const items=(WS.todo&&WS.todo.items)||[];
+  const leftArr=items.filter(t=>!t.done);
+  rows.push({dot:leftArr.length?"var(--amber)":"var(--ok)", t:leftArr.length?("你有 "+leftArr.length+" 项待办未完成"):"待办全部完成 ✓", s:leftArr.length?leftArr.slice(0,2).map(t=>t.text).join("、")+(leftArr.length>2?" 等":""):"今日无遗留事项", go:"overview"});
+  const dr=(WS.bill&&WS.bill.reports&&WS.bill.reports.daily)||null;
+  if(!dr) rows.push({dot:"var(--faint)",t:"消耗日报未收到",s:"等待邮箱推送后自动同步",go:"bill"});
+  else if(billDailyStale()) rows.push({dot:"var(--down)",t:"消耗日报可能滞后",s:"当前停留在 "+(dr.date||"—")+"，等待最新推送",go:"bill"});
+  else rows.push({dot:"var(--ok)",t:"消耗日报已是最新",s:"报表日期 "+(dr.date||"—")+" · 总消耗 "+billMoney(dr.total),go:"bill"});
+  if(WS.sync&&WS.sync.url) rows.push({dot:"var(--ok)",t:"云端同步已连接",s:WS.sync.lastSync?("最近同步 "+fmtTime(WS.sync.lastSync)):"已配置后端，尚未同步",go:"reconcile"});
+  else rows.push({dot:"var(--faint)",t:"云端同步未配置",s:"数据仅存于本浏览器",go:"reconcile"});
+  rows.push({dot:WS.ledgerAt?"var(--ok)":"var(--faint)",t:WS.ledgerAt?"记账本数据已读取":"记账本数据未读取",s:WS.ledgerError||"概览图表数据源",go:"ledger"});
+  return rows;
+}
+function renderNotify(){
+  const p=document.getElementById("notifyPanel"); if(!p) return;
+  const rows=notifyRows();
+  const unread=rows.filter(r=>r.dot==="var(--amber)"||r.dot==="var(--down)").length;
+  p.innerHTML='<div class="notify-head">通知<span>'+(unread?unread+" 条待关注":"全部正常")+'</span></div>'+
+    rows.map(r=>'<div class="nrow" data-go="'+r.go+'"><span class="nd" style="background:'+r.dot+'"></span><span class="nt">'+esc(r.t)+'<span class="ns">'+esc(r.s)+'</span></span></div>').join("");
+  p.querySelectorAll(".nrow").forEach(n=>{ n.onclick=()=>{ toggleNotify(false); switchModule(n.dataset.go); }; });
+}
+function updateBellDot(){
+  const d=document.querySelector(".bell-dot"); if(!d) return;
+  const items=(WS.todo&&WS.todo.items)||[];
+  d.classList.toggle("show", items.some(t=>!t.done) || billDailyStale());
+}
+function toggleNotify(force){
+  const p=document.getElementById("notifyPanel"); if(!p) return;
+  const on = force!==undefined ? force : !p.classList.contains("on");
+  if(on) renderNotify();
+  p.classList.toggle("on", on);
+}
+
+/* 快捷键卡：跟随导航排序动态渲染 */
+function renderKbdRows(){
+  const el=document.getElementById("kbdRows"); if(!el) return;
+  const order=(WS.navOrder&&WS.navOrder.length?WS.navOrder:Object.keys(MOD_NAMES)).filter(m=>MOD_NAMES[m]);
+  let h='<span class="k">⌘K</span><span class="k">命令面板</span>';
+  order.forEach((m,i)=>{ h+='<span class="k">⌘'+(i+1)+'</span><span class="k">'+MOD_NAMES[m]+'</span>'; });
+  el.innerHTML=h;
+}
+
+/* 概览自定义布局：显示 / 隐藏小组件（WS.ovHidden 持久化） */
+const OV_WIDGETS=[ ["kpis","KPI 指标卡"],["charts","净流图 + 分类图"],["grid2","预算 + 最近记账"],["actions","快捷操作"],["side","右侧情境栏"] ];
+function applyOvHidden(){
+  const h=WS.ovHidden||{};
+  document.querySelectorAll("#mod-overview [data-wid]").forEach(el=>{ el.classList.toggle("ov-hidden", !!h[el.dataset.wid]); });
+}
+function renderOvCustom(){
+  const p=document.getElementById("ovCustom"); if(!p) return;
+  const h=WS.ovHidden||{};
+  p.innerHTML='<div class="oc-title">显示 / 隐藏小组件</div>'+OV_WIDGETS.map(w=>'<label><input type="checkbox" data-wid="'+w[0]+'"'+(h[w[0]]?"":" checked")+'>'+w[1]+'</label>').join("");
+  p.querySelectorAll("input").forEach(cb=>{ cb.onchange=()=>{ if(!WS.ovHidden) WS.ovHidden={}; WS.ovHidden[cb.dataset.wid]=!cb.checked; saveState(); applyOvHidden(); }; });
 }
 
 /* ripple 点击涟漪 */
@@ -2448,7 +2591,7 @@ async function init(){
   document.getElementById("impJson").onclick=()=>document.getElementById("impFile").click();
   document.getElementById("impFile").addEventListener("change", e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=""; });
   document.getElementById("clearAll").onclick=doClearAll;
-  document.getElementById("bellBtn").onclick=()=>toast("暂无新通知 ✦");
+  document.getElementById("bellBtn").onclick=()=>toggleNotify();
 
   /* 云端同步绑定 */
   document.getElementById("syncUrl").addEventListener("input", saveSyncCfg);
@@ -2462,7 +2605,7 @@ async function init(){
   document.querySelectorAll(".act[data-go]").forEach(b=>{ b.onclick=()=>switchModule(b.dataset.go); attachRipple(b); });
   const ovExport=document.getElementById("ovExport"); if(ovExport){ ovExport.onclick=exportJSON; attachRipple(ovExport); }
   document.getElementById("addModule").onclick=()=>toast("想加模块？直接告诉我（记账/习惯/任务/学习…），我来加。当前：对账 ✓");
-  const topSync=document.getElementById("topSync"); if(topSync){ topSync.onclick=()=>switchModule("sync"); attachRipple(topSync); }
+  const topSync=document.getElementById("topSync"); if(topSync){ topSync.onclick=()=>{ switchModule("reconcile"); const sc=document.getElementById("syncCard"); if(sc) setTimeout(()=>sc.scrollIntoView({behavior:"smooth",block:"start"}),80); }; attachRipple(topSync); }
 
   document.getElementById("fsRefresh").onclick=()=>fetchFeishu();
   document.getElementById("wbSave").onclick=()=>saveFeishuWebhook();
@@ -2482,7 +2625,16 @@ async function init(){
   renderTodo();
   applyNavOrder();
   bindNavDrag();
-  setInterval(()=>{ if(WS.theme==="auto") applyTheme(); }, 60000);
+  renderOvGreet(); renderFresh(); renderKbdRows(); renderOvCustom(); applyOvHidden(); updateBellDot();
+  const ocBtn=document.getElementById("ovCustomBtn");
+  if(ocBtn) ocBtn.onclick=()=>{ const p=document.getElementById("ovCustom"); if(p) p.classList.toggle("on"); };
+  document.addEventListener("click", e=>{
+    const np=document.getElementById("notifyPanel");
+    if(np && np.classList.contains("on") && !e.target.closest(".notify-wrap")) np.classList.remove("on");
+    const oc=document.getElementById("ovCustom");
+    if(oc && oc.classList.contains("on") && !e.target.closest(".ov-head")) oc.classList.remove("on");
+  });
+  setInterval(()=>{ if(WS.theme==="auto") applyTheme(); renderOvGreet(); }, 60000);
 
   document.getElementById("searchInput").addEventListener("focus", openCmd);
   document.getElementById("searchInput").addEventListener("click", openCmd);
@@ -2506,7 +2658,11 @@ async function init(){
       const m=order[+e.key-1];
       if(m){ e.preventDefault(); switchModule(m); }
     }
-    else if(e.key==="Escape" && document.getElementById("cmdk").classList.contains("on")){ closeCmd(); }
+    else if(e.key==="Escape"){
+      if(document.getElementById("cmdk").classList.contains("on")) closeCmd();
+      toggleNotify(false);
+      const oc=document.getElementById("ovCustom"); if(oc) oc.classList.remove("on");
+    }
   });
 
   document.querySelectorAll(".btn, .addbtn, .ghostbtn, .iconbtn").forEach(attachRipple);
@@ -2519,14 +2675,22 @@ async function init(){
   applyTheme();
   document.getElementById("themeBtn").onclick=toggleTheme;
   switchModule("overview");
+  /* data-d 属性 → CSS --d 变量（入场瀑布延迟，需在首帧渲染前设置） */
+  document.querySelectorAll("[data-d]").forEach(el=>{ const v=parseInt(el.getAttribute("data-d"),10); if(!isNaN(v)) el.style.setProperty("--d", v+"ms"); });
   updateSyncStatus();
   const clk=document.getElementById("sbClock");
   if(clk){ const tick=()=>{ const d=new Date(); const p=n=>String(n).padStart(2,"0"); clk.textContent=p(d.getHours())+":"+p(d.getMinutes())+":"+p(d.getSeconds()); }; tick(); setInterval(tick,1000); }
   const _root=document.documentElement;
   if(!window.matchMedia || !window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    let _raf=0, _mx=0, _my=0;
     window.addEventListener("mousemove", e=>{
-      _root.style.setProperty("--mx", (e.clientX/window.innerWidth*100).toFixed(1)+"%");
-      _root.style.setProperty("--my", (e.clientY/window.innerHeight*100).toFixed(1)+"%");
+      _mx=e.clientX; _my=e.clientY;
+      if(_raf) return;
+      _raf=requestAnimationFrame(()=>{
+        _root.style.setProperty("--mx", (_mx/window.innerWidth*100).toFixed(1)+"%");
+        _root.style.setProperty("--my", (_my/window.innerHeight*100).toFixed(1)+"%");
+        _raf=0;
+      });
     });
   }
 }
