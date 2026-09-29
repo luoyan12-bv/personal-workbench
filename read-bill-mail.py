@@ -556,17 +556,16 @@ class _FileLock:
         self.fh = None
 
     def __enter__(self):
-        import msvcrt  # noqa: F401  # 先尝试 Windows
+        self.fh = open(self.path, "a+b")
+        if self.fh.tell() == 0:  # msvcrt.locking 需锁定区域有字节
+            self.fh.write(b"\x00")
+            self.fh.flush()
+        self.fh.seek(0)
         try:
-            self.fh = open(self.path, "a+b")
-            if self.fh.tell() == 0:  # msvcrt.locking 需锁定区域有字节
-                self.fh.write(b"\x00")
-                self.fh.flush()
-            self.fh.seek(0)
+            import msvcrt  # Windows
             msvcrt.locking(self.fh.fileno(), msvcrt.LK_LOCK, 1)
         except ImportError:
-            import fcntl
-            self.fh = open(self.path, "a+b")
+            import fcntl  # Linux / macOS（GitHub Actions）
             fcntl.flock(self.fh.fileno(), fcntl.LOCK_EX)
         return self
 
