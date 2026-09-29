@@ -128,7 +128,35 @@ async function postFeishu(msgType, card){
   return { ok: false, msg: j.msg || ("HTTP " + r.status) };
 }
 
-export async function run(){
+function monthKey(s){ return String(s || "").slice(0, 7); }
+
+// 上月汇总：把上月每天的归档按商务加总（每月1号由 run() 调用）
+function rollupPrevMonth(today, history){
+  const pm = monthKey(addDays(today, -1));
+  const entries = history.filter(h => monthKey(h.date) === pm);
+  if(!entries.length) return null;
+  const agg = {};
+  entries.forEach(e => (e.bizs || []).forEach(b => { const k = billBizName(b.biz); agg[k] = (agg[k] || 0) + Number(b.spent || 0); }));
+  return { month: pm, total: Math.round(entries.reduce((s, e) => s + Number(e.total || 0), 0) * 100) / 100,
+           bizs: Object.entries(agg).map(([biz, spent]) => ({ biz, spent: Math.round(spent * 100) / 100 })).sort((a, b) => b.spent - a.spent),
+           days: entries.length, generatedAt: new Date().toISOString() };
+}
+
+const MONTH_COLS = [{ w: 3, align: "left" }, { w: 2, align: "right" }, { w: 2, align: "right" }];
+function mRow(cells, bg){
+  return { tag: "column_set", flex_mode: "none", background_style: bg || "default",
+    columns: cells.map((c, i) => ({ tag: "column", width: "weighted", weight: MONTH_COLS[i].w, horizontal_align: MONTH_COLS[i].align, vertical_align: "center", elements: [{ tag: "markdown", content: c }] })) };
+}
+function monthElements(roll){
+  const fmt = n => "¥" + Number(n || 0).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const els = [mRow(["**商务**", "**上月总消耗**", "**日均**"], "grey")];
+  roll.bizs.forEach(b => els.push(mRow([b.biz, fmt(b.spent), fmt(b.spent / Math.max(roll.days, 1))])));
+  els.push(mRow(["**合计**", "**" + fmt(roll.total) + "**", fmt(roll.total / Math.max(roll.days, 1))], "grey"));
+  els.push({ tag: "note", elements: [{ tag: "plain_text", content: "按 " + roll.days + " 天日报汇总 · 每天 10:30 自动推送" }] });
+  return els;
+}
+
+async function run(){
   const d = await sbSelect(3);
   const daily = d && d.daily, monthly = d && d.monthly;
   if(!daily){ console.log("无日报数据，跳过推送。"); return; }
@@ -139,10 +167,28 @@ export async function run(){
   const res = await postFeishu("interactive", card);
   // 归档今日到历史（按日期去重），供次日算环比
   const today = String(daily.date || "").slice(0, 10);
+  const day = Number(today.slice(8, 10));
   const next = history.filter(h => String(h.date).slice(0, 10) !== today);
   next.unshift({ date: today, bizs: daily.bizs || [], total: daily.total });
-  if(next.length > 60) next.length = 60;
-  await sbUpsert(5, { history: next });
+
+  // 每月 1-3 号：汇总上月总消耗 → 固化到 id=6 + 推飞书月账卡片（已存过则跳过，防重复推）
+  if(day <= 3){
+    const md = await sbSelect(6);
+    const months = (md && md.months) || {};
+    const roll = rollupPrevMonth(today, next);
+    if(roll && !months[roll.month]){
+      months[roll.month] = roll;
+      await sbUpsert(6, { months });
+      const mcard = { config: { wide_screen_mode: true }, header: { title: { tag: "plain_text", content: "磁力金牛 · 上月总消耗 " + roll.month }, template: "green" }, elements: monthElements(roll) };
+      const mres = await postFeishu("interactive", mcard);
+      console.log(mres.ok ? ("已推送上月总账 ✓ " + roll.month + " 合计 " + roll.total + "（" + roll.days + " 天）") : ("上月总账推送失败: " + mres.msg));
+    }
+  }
+
+  // 存储策略：3 号起归档只保留当月每日消耗（上月总账已固化到 id=6，历史明细随时可从邮箱重补）
+  const keep = (day >= 3) ? next.filter(h => monthKey(h.date) === monthKey(today)) : next;
+  if(keep.length > 60) keep.length = 60;
+  await sbUpsert(5, { history: keep });
   console.log(res.ok ? ("已推送飞书群 ✓ " + rk.date + " | 商务 " + rk.rows.length + " 家 | 今日合计 " + rk.totalToday) : ("推送失败: " + res.msg));
   process.exit(res.ok ? 0 : 1);
 }
