@@ -273,6 +273,11 @@ select[multiple] option:checked{background:var(--amber-soft);color:var(--amber-d
 .preview{margin-top:14px;max-height:240px;overflow:auto;border:1px solid var(--glass-border);border-radius:12px;background:var(--glass-strong)}
 table{border-collapse:collapse;width:100%;font-size:12.5px}
 th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;white-space:nowrap}
+#billRank th.r,#billRank td.r{text-align:right;font-variant-numeric:tabular-nums}
+#billRank th.c,#billRank td.c{text-align:center}
+#billRank .c-up{color:var(--down);font-weight:700}
+#billRank .c-down{color:var(--ok);font-weight:700}
+#billRank tr.sum td{font-weight:700;border-top:2px solid var(--glass-border)}
 th{background:var(--glass-strong);color:var(--ink-2);font-weight:600;position:sticky;top:0;z-index:1}
 .mapgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:840px){.mapgrid{grid-template-columns:1fr}}
@@ -1224,7 +1229,16 @@ body::after{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:non
         <div class="bill-empty" id="billEmpty" style="display:none">该类报表尚未收到，等待推送后自动同步。</div>
       </div>
 
-      <div class="note" id="billNote">数据由每天定时从 QQ 邮箱自动同步磁力金牛报表（日报/周报/月报），每类只保留最新一份。如需立即同步，对我说「同步消耗」即可手动拉取一次。</div>
+      <!-- 商务消耗排行（日报）+ 飞书群推送 -->
+      <div class="glass reveal" style="--d:180ms;padding:18px 20px;margin-bottom:18px">
+        <div class="card-title"><span class="idx" style="width:24px;height:24px;border-radius:7px;background:var(--amber-soft);color:var(--amber-deep);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">榜</span><h3>商务消耗排行 · 日报</h3><span class="cnt" id="billRankCnt">—</span><button class="btn btn-ghost sm" id="billSendFeishu" style="margin-left:auto">推送飞书群</button></div>
+        <div class="reswrap">
+          <table id="billRank"></table>
+        </div>
+        <div class="bill-empty" id="billRankEmpty" style="display:none">日报尚未收到，等待推送后自动同步。</div>
+      </div>
+
+      <div class="note" id="billNote">数据由每天定时从 QQ 邮箱自动同步磁力金牛报表（日报/周报/月报），每类只保留最新一份。如需立即同步，对我说「同步消耗」即可手动拉取一次。日报「商务消耗排行」每日收到新日报时自动归档，用于计算前日消耗与环比；点击「推送飞书群」可把同款表格以卡片发到已配置的飞书群。</div>
     </section>
 
   </main>
@@ -1267,6 +1281,8 @@ let WS = {
   reconcile:{ A:null, B:null, results:[], filter:"ALL", view:"detail", mergeMode:false },
   // 消耗账单模块：磁力金牛报表（日/周/月），每类保留最新一份云端快照
   bill:{ tab:"daily", reports:{ daily:null, weekly:null, monthly:null } },
+  // 消耗账单历史归档（按日期存，用于日报环比）：[{date,bizs,total}]
+  billHistory:[],
   // 今日待办（概览侧栏卡片）
   todo:{ items:[] },
   // 侧边导航自定义排序（模块 key 数组）
@@ -1290,6 +1306,7 @@ function loadState(){
       if(o && o.bill) WS.bill = Object.assign(WS.bill, o.bill);
       if(!WS.bill.reports) WS.bill.reports = { daily:null, weekly:null, monthly:null };
       if(!WS.bill.tab) WS.bill.tab = "daily";
+      if(o && Array.isArray(o.billHistory)) WS.billHistory = o.billHistory;
       if(o && o.todo && Array.isArray(o.todo.items)) WS.todo = { items:o.todo.items };
       if(o && Array.isArray(o.navOrder)) WS.navOrder = o.navOrder;
       if(o && o.ovHidden) WS.ovHidden = o.ovHidden;
@@ -1955,6 +1972,7 @@ const CMD_LIST = [
   {key:"feishu", label:"切换到 飞书", mod:"feishu", icon:"doc"},
   {key:"bill", label:"切换到 消耗账单", mod:"bill", icon:"doc"},
   {key:"billrefresh", label:"刷新消耗账单", act:"billrefresh", icon:"play"},
+  {key:"billfeishu", label:"推送消耗日报到飞书群", act:"billfeishu", icon:"play"},
   {key:"ai", label:"打开 AI 助手", act:"ai", icon:"plus"},
   {key:"sample", label:"载入对账示例数据", act:"sample", icon:"doc"},
   {key:"run", label:"运行对账", act:"run", icon:"play"},
@@ -2006,6 +2024,7 @@ function runCmd(c){
   else if(c.act==="clear"){ doClearAll(); }
   else if(c.act==="theme"){ toggleTheme(); }
   else if(c.act==="billrefresh"){ switchModule("bill"); fetchBillCloud(); }
+  else if(c.act==="billfeishu"){ switchModule("bill"); sendBillRankingToFeishu(); }
   else if(c.act==="ai"){ document.getElementById("aiFab").click(); }
 }
 
@@ -2374,25 +2393,29 @@ async function aesDecrypt(p, pass){
   return JSON.parse(dec.decode(pt));
 }
 
-async function testFeishuWebhook(){
+/* 通用飞书机器人发送：读取 webhook（解密或明文）+ 加签 + POST，返回 {ok,msg} */
+async function feishuPost(body){
   const w=WS.sync.feishuWebhook||{};
   let url, secret;
   if(w.enc){
-    if(!AGENT_ENC_PASS){ toast("请先在口令框输入加密口令解锁"); return; }
+    if(!AGENT_ENC_PASS){ toast("请先在飞书模块输入加密口令解锁"); return {ok:false,msg:"未解锁"}; }
     try{ const d=await aesDecrypt(w, AGENT_ENC_PASS); url=d.url||""; secret=d.secret||""; }
-    catch(e){ toast("加密口令错误"); return; }
-  } else { url=w.url||""; secret=w.secret||""; }
-  url=(url||"").trim(); secret=(secret||"").trim();
-  if(!url){ toast("请先填写 webhook 地址"); return; }
-  if(!confirm("确定向该飞书机器人发送一条测试消息吗？")) return;
+    catch(e){ toast("加密口令错误"); return {ok:false,msg:"口令错误"}; }
+  } else { url=(w.url||"").trim(); secret=(w.secret||"").trim(); }
+  if(!url){ toast("请先在飞书模块填写 webhook 地址"); return {ok:false,msg:"未配置"}; }
   try{
-    const body={ msg_type:"text", content:{ text:"✅ 个人工作台 · 飞书机器人连接测试成功（"+new Date().toLocaleString("zh-CN")+"）" } };
     if(secret){ const ts=Math.floor(Date.now()/1000); body.timestamp=String(ts); body.sign=await feishuSign(secret, ts); }
     const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
     const j=await res.json().catch(()=>({}));
-    if(res.ok && (j.code===0 || j.StatusCode===0 || !("code" in j))){ toast("测试消息已发送 ✓"); }
-    else { toast("发送失败："+(j.msg||("HTTP "+res.status))); }
-  }catch(e){ toast("发送失败："+e.message); }
+    if(res.ok && (j.code===0 || j.StatusCode===0 || !("code" in j))) return {ok:true,msg:"已发送"};
+    return {ok:false,msg:(j.msg||("HTTP "+res.status))};
+  }catch(e){ return {ok:false,msg:e.message}; }
+}
+
+async function testFeishuWebhook(){
+  if(!confirm("确定向该飞书机器人发送一条测试消息吗？")) return;
+  const r=await feishuPost({ msg_type:"text", content:{ text:"✅ 个人工作台 · 飞书机器人连接测试成功（"+new Date().toLocaleString("zh-CN")+"）" } });
+  toast(r.ok?("测试消息已发送 ✓"):("发送失败："+r.msg));
 }
 
 /* ============================================================
@@ -2417,9 +2440,101 @@ function fetchBillCloud(){
       saveState();
       setBillSync("已同步","var(--ok)");
       renderBill(); renderFresh(); updateBellDot();
+      archiveBillDaily(); renderBillRanking();
       aiBillInsight();
     })
     .catch(()=>{ setBillSync("同步失败（用本地缓存）","var(--down)"); renderBill(); renderFresh(); updateBellDot(); });
+}
+
+/* ---------- 日报历史归档 + 商务消耗排行（供飞书群推送） ---------- */
+function addDays(s,n){ const d=new Date(s+"T00:00:00"); d.setDate(d.getDate()+n); const p=x=>String(x).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
+
+function archiveBillDaily(){
+  const d=WS.bill.reports.daily; if(!d||!d.date) return;
+  const date=String(d.date).slice(0,10);
+  const H=WS.billHistory||(WS.billHistory=[]);
+  if(H.length && String(H[0].date).slice(0,10)===date) return; // 当天已归档，跳过
+  H.unshift({date:date, bizs:d.bizs||[], total:d.total});
+  if(H.length>60) H.length=60;
+  saveState();
+}
+
+function buildBillRanking(){
+  const d=WS.bill.reports.daily; if(!d) return null;
+  const m=WS.bill.reports.monthly;
+  const monthMap={}; (m&&m.bizs?m.bizs:[]).forEach(b=>{ monthMap[billBizName(b.biz)]=Number(b.spent||0); });
+  const today=String(d.date||"").slice(0,10);
+  const prevDate=addDays(today,-1);
+  const prev=(WS.billHistory||[]).find(h=>String(h.date).slice(0,10)===prevDate);
+  const prevMap={}; (prev&&prev.bizs?prev.bizs:[]).forEach(b=>{ prevMap[billBizName(b.biz)]=Number(b.spent||0); });
+  const rows=(d.bizs||[]).map(b=>{
+    const name=billBizName(b.biz);
+    const todaySpent=Number(b.spent||0);
+    const prevSpent=Number(prevMap[name]||0);
+    const pct=prevSpent>0?((todaySpent-prevSpent)/prevSpent*100):null;
+    return { name, todaySpent, prevSpent, pct, monthSpent:Number(monthMap[name]||0) };
+  }).sort((a,b)=>b.todaySpent-a.todaySpent);
+  rows.forEach((r,i)=>r.rank=i+1);
+  const totalToday=rows.reduce((s,r)=>s+r.todaySpent,0);
+  const totalMonth=rows.reduce((s,r)=>s+r.monthSpent,0);
+  return { date:today, prevDate, hasPrev:!!prev, rows, totalToday, totalMonth };
+}
+
+function renderBillRanking(){
+  const el=document.getElementById("billRank"); if(!el) return;
+  const cnt=document.getElementById("billRankCnt");
+  const empty=document.getElementById("billRankEmpty");
+  const rk=buildBillRanking();
+  if(!rk){ if(cnt) cnt.textContent="—"; if(empty) empty.style.display="block"; el.innerHTML=""; return; }
+  if(empty) empty.style.display="none";
+  if(cnt) cnt.textContent=rk.hasPrev?("前日 "+rk.prevDate):"无前日数据";
+  const esc2=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+  let h='<thead><tr><th>排名</th><th>商务</th><th class="r">今日消耗</th><th class="r">前日消耗</th><th class="r">环比</th><th class="r">月消耗</th></tr></thead><tbody>';
+  rk.rows.forEach(r=>{
+    const pct=r.pct===null?"—":(r.pct>=0?"↑":"↓")+Math.abs(r.pct).toFixed(1)+"%";
+    const pcls=r.pct===null?"":(r.pct>=0?"c-up":"c-down");
+    h+='<tr><td class="c">'+r.rank+'</td><td>'+esc2(r.name)+'</td><td class="r">'+billMoney(r.todaySpent)+'</td><td class="r">'+billMoney(r.prevSpent)+'</td><td class="r '+pcls+'">'+pct+'</td><td class="r">'+billMoney(r.monthSpent)+'</td></tr>';
+  });
+  h+='<tr class="sum"><td class="c">合计</td><td>—</td><td class="r">'+billMoney(rk.totalToday)+'</td><td class="r">—</td><td class="r">—</td><td class="r">'+billMoney(rk.totalMonth)+'</td></tr>';
+  h+='</tbody>';
+  el.innerHTML=h;
+}
+
+function buildBillRankingMarkdown(rk){
+  const fmt=n=>"¥"+Number(n||0).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});
+  let m="| 排名 | 商务 | 今日消耗 | 前日消耗 | 环比 | 月消耗 |\n| :---: | --- | ---: | ---: | ---: | ---: |\n";
+  rk.rows.forEach(r=>{
+    const pct=r.pct===null?"—":(r.pct>=0?"↑":"↓")+Math.abs(r.pct).toFixed(1)+"%";
+    m+="| "+r.rank+" | "+r.name+" | "+fmt(r.todaySpent)+" | "+fmt(r.prevSpent)+" | "+pct+" | "+fmt(r.monthSpent)+" |\n";
+  });
+  m+="| **合计** | — | **"+fmt(rk.totalToday)+"** | — | — | **"+fmt(rk.totalMonth)+"** |";
+  if(!rk.hasPrev) m+="\n\n> 提示：暂无前日数据，环比暂缺（历史日报归档后将自动补齐）。";
+  return m;
+}
+
+/* 飞书卡片不支持 markdown 表格 → 用 column_set（列布局）拼真表格 */
+function buildBillRankingCardElements(rk){
+  const fmt=n=>"¥"+Number(n||0).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const cols=[{w:1,a:"center"},{w:2,a:"left"},{w:2,a:"right"},{w:2,a:"right"},{w:1,a:"right"},{w:2,a:"right"}];
+  const rowSet=(cells,bg)=>({tag:"column_set",flex_mode:"none",background_style:bg||"default",columns:cells.map((c,i)=>({tag:"column",width:"weighted",weight:cols[i].w,horizontal_align:cols[i].a,vertical_align:"center",elements:[{tag:"markdown",content:c}]}))});
+  const els=[rowSet(["**排名**","**商务**","**今日消耗**","**前日消耗**","**环比**","**月消耗**"],"grey")];
+  rk.rows.forEach(r=>{
+    const pct=r.pct===null?"—":(r.pct>=0?"↑ ":"↓ ")+Math.abs(r.pct).toFixed(1)+"%";
+    els.push(rowSet([String(r.rank),r.name,fmt(r.todaySpent),fmt(r.prevSpent),pct,fmt(r.monthSpent)]));
+  });
+  els.push(rowSet(["**合计**","—","**"+fmt(rk.totalToday)+"**","—","—","**"+fmt(rk.totalMonth)+"**"],"grey"));
+  els.push({tag:"hr"});
+  els.push({tag:"note",elements:[{tag:"plain_text",content:rk.hasPrev?("前日数据："+rk.prevDate):"暂无前日数据，环比暂缺（历史日报归档后将自动补齐）"}]});
+  return els;
+}
+
+async function sendBillRankingToFeishu(){
+  const rk=buildBillRanking();
+  if(!rk){ toast("日报尚未收到，无法推送"); return; }
+  if(!confirm("确认把「"+rk.date+" 商务消耗排行」推送到飞书群？")) return;
+  const body={ msg_type:"interactive", card:{ config:{wide_screen_mode:true}, header:{ title:{tag:"plain_text",content:"磁力金牛 · 商务消耗日报 "+rk.date}, template:"blue" }, elements:buildBillRankingCardElements(rk) } };
+  const r=await feishuPost(body);
+  toast(r.ok?"日报已推送飞书群 ✓":("推送失败："+r.msg));
 }
 
 function renderBill(){
@@ -2693,7 +2808,12 @@ const AI_TOOLS = [
       return {已记账:rec};
     } },
   { def:{name:"create_custom_card", description:"在概览页创建一张 AI 便签卡（标题+内容），用于沉淀结论/提醒/计划", parameters:{type:"object",properties:{title:{type:"string",description:"便签标题"},content:{type:"string",description:"便签内容"}},required:["title","content"]} },
-    run(a){ if(!WS.aiNotes) WS.aiNotes=[]; WS.aiNotes.unshift({id:Date.now(),title:a.title,content:a.content,at:new Date().toISOString()}); if(WS.aiNotes.length>8) WS.aiNotes.length=8; saveState(); renderAiNotes(); return {已创建便签:a.title}; } }
+    run(a){ if(!WS.aiNotes) WS.aiNotes=[]; WS.aiNotes.unshift({id:Date.now(),title:a.title,content:a.content,at:new Date().toISOString()}); if(WS.aiNotes.length>8) WS.aiNotes.length=8; saveState(); renderAiNotes(); return {已创建便签:a.title}; } },
+  { def:{name:"get_bill_ranking", description:"获取商务消耗排行（日报）：排名/今日消耗/前日消耗/环比/月消耗，用于预览", parameters:{type:"object",properties:{}} },
+    run(){ const rk=buildBillRanking(); if(!rk) return {提示:"日报尚未收到"}; return {日期:rk.date, 前日:rk.prevDate, 有前日数据:rk.hasPrev, 排行:rk.rows.map(r=>({排名:r.rank,商务:r.name,今日:r.todaySpent,前日:r.prevSpent,环比:r.pct===null?null:Math.round(r.pct*10)/10,月消耗:r.monthSpent})), 今日合计:rk.totalToday, 月合计:rk.totalMonth}; } },
+  { def:{name:"send_bill_ranking_to_feishu", description:"把商务消耗排行日报以卡片形式推送到已配置的飞书群", parameters:{type:"object",properties:{}} },
+    confirm:()=>"确认把商务消耗排行日报推送到飞书群？",
+    async run(){ const rk=buildBillRanking(); if(!rk) return {提示:"日报尚未收到，无法推送"}; const body={ msg_type:"interactive", card:{ config:{wide_screen_mode:true}, header:{ title:{tag:"plain_text",content:"磁力金牛 · 商务消耗日报 "+rk.date}, template:"blue" }, elements:buildBillRankingCardElements(rk) } }; const r=await feishuPost(body); return r.ok?{已推送:"飞书群",日期:rk.date}:{失败:r.msg}; } }
 ];
 
 /* ---------- DeepSeek 调用与对话循环 ---------- */
@@ -2851,7 +2971,7 @@ function attachRipple(el){
 function doClearAll(){
   if(confirm("确定清空全部工作台数据？此操作不可撤销，建议先点「备份」。")){
     localStorage.removeItem(LS_KEY);
-    WS = { theme:WS.theme, reconcile:{A:null,B:null,results:[],filter:"ALL",view:"detail",mergeMode:false}, bill:{tab:"daily",reports:{daily:null,weekly:null,monthly:null}}, todo:{items:[]}, navOrder:WS.navOrder||[], ovHidden:{}, ai:WS.ai, aiNotes:[], aiInsight:null, sync:WS.sync };
+    WS = { theme:WS.theme, reconcile:{A:null,B:null,results:[],filter:"ALL",view:"detail",mergeMode:false}, bill:{tab:"daily",reports:{daily:null,weekly:null,monthly:null}}, billHistory:[], todo:{items:[]}, navOrder:WS.navOrder||[], ovHidden:{}, ai:WS.ai, aiNotes:[], aiInsight:null, sync:WS.sync };
     clearSample();
     document.getElementById("pasteA").value=""; document.getElementById("pasteB").value="";
     toast("已清空全部数据");
@@ -2909,6 +3029,7 @@ async function init(){
   /* 消耗账单模块绑定 */
   document.getElementById("billExport").onclick=exportBillCsv;
   document.getElementById("billRefresh").onclick=fetchBillCloud;
+  document.getElementById("billSendFeishu").onclick=()=>sendBillRankingToFeishu();
   document.querySelectorAll("#billSeg .vtab").forEach(t=>{ t.onclick=()=>{ WS.bill.tab=t.dataset.billtab; saveState(); renderBill(); }; });
 
   /* 今日待办 + 导航拖拽 */
