@@ -17,7 +17,7 @@ read-bill-mail.py — 独立运行的磁力金牛报表同步脚本（日报/周
 规则保持一致；本脚本为单文件自包含实现，不依赖该文件存在。
 
 用法示例：
-  python read-bill-mail.py --user 2080572504@qq.com --password 你的16位授权码 --days 1
+  python read-bill-mail.py --user your-email@qq.com --password 你的16位授权码 --days 1
   python read-bill-mail.py --type daily --days 1 --dry-run     # 只解析预览，不落盘不推送
   python read-bill-mail.py --sample                            # 内置示例数据自测全链路
 
