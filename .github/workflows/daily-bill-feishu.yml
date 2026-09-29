@@ -1,0 +1,51 @@
+name: 磁力金牛日报 · 推送飞书群
+
+on:
+  schedule:
+    # 北京时间 10:30 触发（GitHub Actions 用 UTC：02:30）；摄入任务 10:05 先跑，保证数据是当天最新的
+    - cron: "30 2 * * *"
+  workflow_dispatch: {}   # 支持手动在 Actions 页面点 Run workflow 立即跑一次
+
+jobs:
+  push-bill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 准备 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 推送日报到飞书群
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # 方式 A（推荐）：飞书自建应用 → tenant token + 群 chat_id
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
+          # 方式 B（可选回退）：群机器人 webhook（开加签再填 FEISHU_SECRET）
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
+        run: node scripts/bill-feishu-action.mjs
+
+      - name: 失败时飞书告警
+        if: failure()
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          TOKEN=$(curl -s -X POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg a "$FEISHU_APP_ID" --arg s "$FEISHU_APP_SECRET" '{app_id:$a,app_secret:$s}')" \
+            | jq -r '.tenant_access_token // empty')
+          if [ -z "$TOKEN" ]; then echo "获取 tenant token 失败，跳过告警"; exit 0; fi
+          PAYLOAD=$(jq -n --arg rid "$FEISHU_CHAT_ID" --arg txt "⚠️ 磁力金牛日报推送失败，请查日志：$RUN_URL" \
+            '{receive_id:$rid,msg_type:"text",content:({text:$txt}|tostring)}')
+          curl -s -X POST "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id" \
+            -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$PAYLOAD"
