@@ -1,0 +1,46 @@
+name: 磁力金牛 · 兜底补跑
+
+on:
+  schedule:
+    # 北京时间 11:37（UTC 03:37）：若 10:05/10:30 的定时任务被 GitHub 丢弃，这里幂等补跑
+    - cron: "37 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  catchup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 准备 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 补摄入（前序失败/邮件迟到都容忍）
+        continue-on-error: true
+        env:
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASS: ${{ secrets.IMAP_PASS }}
+          MAIL_SENDER: agent@contact.kuaishou.com
+          SUPABASE_URL: https://wvniuyfnuyrebowjlxbi.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: pip install openpyxl && python read-bill-mail.py --type all --days 1
+
+      - name: 准备 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 幂等补推送（今日卡片没发过才发）
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
+        run: node scripts/bill-catchup.mjs
