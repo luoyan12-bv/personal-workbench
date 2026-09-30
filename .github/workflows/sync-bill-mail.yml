@@ -2,8 +2,8 @@ name: 磁力金牛报表 · 邮箱摄入（QQ邮箱→Supabase）
 
 on:
   schedule:
-    # 北京时间每天 10:05（GitHub Actions 用 UTC；实际执行可能有 ±15 分钟漂移）
-    - cron: "5 2 * * *"
+    # 北京时间每天 10:13（UTC 02:13；错峰整/半点，降低 GitHub 高峰丢弃概率；±15 分钟漂移属正常）
+    - cron: "13 2 * * *"
   workflow_dispatch: {}   # 手动测试入口：Actions 页面点 Run workflow 立即跑一次
 
 jobs:
