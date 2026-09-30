@@ -2,9 +2,14 @@ name: 磁力金牛日报 · 推送飞书群
 
 on:
   schedule:
-    # 北京时间 10:30 触发（GitHub Actions 用 UTC：02:30）；摄入任务 10:05 先跑，保证数据是当天最新的
-    - cron: "30 2 * * *"
-  workflow_dispatch: {}   # 支持手动在 Actions 页面点 Run workflow 立即跑一次
+    # 北京时间 10:41（UTC 02:41，错峰；摄入 10:13 先跑，保证数据是当天最新的）
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '强制重发今日卡片（忽略去重）'
+        type: boolean
+        default: false
 
 jobs:
   push-bill:
@@ -30,6 +35,7 @@ jobs:
           # 方式 B（可选回退）：群机器人 webhook（开加签再填 FEISHU_SECRET）
           FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
           FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
+          FORCE_PUSH: ${{ github.event.inputs.force == 'true' && '1' || '0' }}
         run: node scripts/bill-feishu-action.mjs
 
       - name: 失败时飞书告警
