@@ -163,8 +163,16 @@ async function run(){
   const histData = await sbSelect(5);
   const history = (histData && histData.history) || [];
   const rk = buildRanking(daily, monthly, history);
-  const card = { config: { wide_screen_mode: true }, header: { title: { tag: "plain_text", content: "磁力金牛 · 商务消耗日报 " + rk.date }, template: "blue" }, elements: buildTableElements(rk) };
-  const res = await postFeishu("interactive", card);
+  // 幂等防重：同一份日报的卡片只发一次（FORCE_PUSH=1 可强制重发）
+  const force = (process.env.FORCE_PUSH || "").trim() === "1";
+  const already = history.some(h => String(h.date).slice(0, 10) === rk.date);
+  let res = { ok: true };
+  if(already && !force){
+    console.log("今日卡片已推送过（" + rk.date + "），跳过重复发送。");
+  }else{
+    const card = { config: { wide_screen_mode: true }, header: { title: { tag: "plain_text", content: "磁力金牛 · 商务消耗日报 " + rk.date }, template: "blue" }, elements: buildTableElements(rk) };
+    res = await postFeishu("interactive", card);
+  }
   // 归档今日到历史（按日期去重），供次日算环比
   const today = String(daily.date || "").slice(0, 10);
   const day = Number(today.slice(8, 10));
@@ -189,7 +197,7 @@ async function run(){
   const keep = (day >= 3) ? next.filter(h => monthKey(h.date) === monthKey(today)) : next;
   if(keep.length > 60) keep.length = 60;
   await sbUpsert(5, { history: keep });
-  console.log(res.ok ? ("已推送飞书群 ✓ " + rk.date + " | 商务 " + rk.rows.length + " 家 | 今日合计 " + rk.totalToday) : ("推送失败: " + res.msg));
+  console.log(res.ok ? ((already && !force) ? ("跳过重复发送 " + rk.date + "（归档/裁剪已照常执行）") : ("已推送飞书群 ✓ " + rk.date + " | 商务 " + rk.rows.length + " 家 | 今日合计 " + rk.totalToday)) : ("推送失败: " + res.msg));
   process.exit(res.ok ? 0 : 1);
 }
 
