@@ -1,0 +1,73 @@
+name: 磁力金牛 · 每日提取+推送（10:00）
+
+on:
+  schedule:
+    # 北京时间每天 10:00（UTC 00:00）：①云端提取邮箱报表 → ②提取完立刻推送飞书，一气呵成
+    # 若本次被 GitHub 高峰丢弃，11:37 的兜底任务会幂等补跑
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '强制重发今日卡片（忽略去重）'
+        type: boolean
+        default: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 准备 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: ① 云端提取（QQ邮箱 → 解析 → Supabase）
+        continue-on-error: true
+        env:
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASS: ${{ secrets.IMAP_PASS }}
+          MAIL_SENDER: agent@contact.kuaishou.com
+          SUPABASE_URL: https://wvniuyfnuyrebowjlxbi.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        # 单次处理日报/周报/月报三类；退出码 5=今日邮件未到，属正常容忍
+        run: pip install openpyxl && (python read-bill-mail.py --type all --days 1 || [ $? -eq 5 ])
+
+      - name: 准备 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: ② 提取完即推送飞书（幂等：同一份日报只发一次）
+        if: always()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
+          FORCE_PUSH: ${{ github.event.inputs.force == 'true' && '1' || '0' }}
+        run: node scripts/bill-feishu-action.mjs
+
+      - name: 失败时飞书告警
+        if: failure()
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          TOKEN=$(curl -s -X POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg a "$FEISHU_APP_ID" --arg s "$FEISHU_APP_SECRET" '{app_id:$a,app_secret:$s}')" \
+            | jq -r '.tenant_access_token // empty')
+          if [ -z "$TOKEN" ]; then echo "获取 tenant token 失败，跳过告警"; exit 0; fi
+          PAYLOAD=$(jq -n --arg rid "$FEISHU_CHAT_ID" --arg txt "⚠️ 磁力金牛每日任务失败，请查日志：$RUN_URL" \
+            '{receive_id:$rid,msg_type:"text",content:({text:$txt}|tostring)}')
+          curl -s -X POST "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id" \
+            -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "$PAYLOAD"
