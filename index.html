@@ -2406,9 +2406,12 @@ async function feishuPost(body){
   try{
     if(secret){ const ts=Math.floor(Date.now()/1000); body.timestamp=String(ts); body.sign=await feishuSign(secret, ts); }
     const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    const j=await res.json().catch(()=>({}));
+    const raw=await res.text().catch(()=>"");
+    let j={}; try{ j=JSON.parse(raw); }catch(e){}
+    const host=(url.match(/^https?:\/\/[^/]+/)||[""])[0];
     if(res.ok && (j.code===0 || j.StatusCode===0 || !("code" in j))) return {ok:true,msg:"已发送"};
-    return {ok:false,msg:(j.msg||("HTTP "+res.status))};
+    console.warn("[feishuPost] 推送失败诊断 → webhook主机:", host, "| HTTP", res.status, "| 原始回包:", raw.slice(0,300));
+    return {ok:false,msg:(j.msg||j.errmsg||("HTTP "+res.status))+(j.code!==undefined&&j.code!==0?("(code "+j.code+")"):"")};
   }catch(e){ return {ok:false,msg:e.message}; }
 }
 
