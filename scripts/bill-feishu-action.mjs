@@ -130,11 +130,13 @@ async function postFeishu(msgType, card){
 
 function monthKey(s){ return String(s || "").slice(0, 7); }
 
-// 上月汇总：把上月每天的归档按商务加总（每月1号由 run() 调用）
+// 上月汇总：上月 = 当前月 1 号的前一天所在月（无论今天是几号，结果都正确）
 function rollupPrevMonth(today, history){
-  const pm = monthKey(addDays(today, -1));
+  const first = String(today).slice(0, 8) + "01";
+  const pm = monthKey(addDays(first, -1));
   const entries = history.filter(h => monthKey(h.date) === pm);
   if(!entries.length) return null;
+  if(entries.length < 25) return null; // 整月至少 25 天数据才固化，防止零星几天污染总账
   const agg = {};
   entries.forEach(e => (e.bizs || []).forEach(b => { const k = billBizName(b.biz); agg[k] = (agg[k] || 0) + Number(b.spent || 0); }));
   return { month: pm, total: Math.round(entries.reduce((s, e) => s + Number(e.total || 0), 0) * 100) / 100,
@@ -156,7 +158,7 @@ function monthElements(roll){
   return els;
 }
 
-async function run(){
+export async function run(){
   const d = await sbSelect(3);
   const daily = d && d.daily, monthly = d && d.monthly;
   if(!daily){ console.log("无日报数据，跳过推送。"); return; }
